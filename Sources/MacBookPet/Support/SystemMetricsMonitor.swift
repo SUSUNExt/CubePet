@@ -17,6 +17,10 @@ final class SystemMetricsMonitor {
     private var previousNetworkTotals: NetworkTotals?
     private var previousNetworkSampleTime = ProcessInfo.processInfo.systemUptime
 
+    var isRunning: Bool {
+        timer != nil
+    }
+
     func start() {
         stop()
         previousCPUTicks = readCPUTicks()
@@ -25,7 +29,9 @@ final class SystemMetricsMonitor {
         onUpdate?(SystemMetricsSnapshot(memoryUsage: readMemoryUsage()))
 
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            // The timer is attached to RunLoop.main below, so sampling can stay
+            // on the monitor's main-actor isolation without creating a task.
+            MainActor.assumeIsolated {
                 self?.sample()
             }
         }

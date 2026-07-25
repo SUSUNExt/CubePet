@@ -4,6 +4,61 @@ import XCTest
 
 final class PetCustomizationStoreTests: XCTestCase {
     @MainActor
+    func testSystemMetricsMonitorStopsSamplingWhenStopped() {
+        let monitor = SystemMetricsMonitor()
+        XCTAssertFalse(monitor.isRunning)
+
+        monitor.start()
+        XCTAssertTrue(monitor.isRunning)
+
+        monitor.stop()
+        XCTAssertFalse(monitor.isRunning)
+    }
+
+    func testShortcutSettingsPersistOnlyRegisteredShortcut() {
+        let suiteName = "MacBookPetTests.ShortcutSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = ShortcutSettings(defaults: defaults)
+        XCTAssertEqual(settings.shortcut, .defaultShortcut)
+
+        let registeredShortcut = KeyboardShortcutDefinition(
+            keyCode: 1,
+            carbonModifiers: 1 << 11,
+            keyName: "S"
+        )
+        settings.saveRegisteredShortcut(registeredShortcut)
+
+        XCTAssertEqual(settings.shortcut, registeredShortcut)
+        XCTAssertEqual(
+            ShortcutSettings(defaults: defaults).shortcut,
+            registeredShortcut
+        )
+    }
+
+    @MainActor
+    func testPetContextMenuTextIsLocalized() {
+        let settings = LanguageSettings()
+        let originalLanguage = settings.language
+        defer { settings.language = originalLanguage }
+
+        let expectedText: [(AppLanguage, String, String)] = [
+            (.english, "Buy Food", "Show Main Menu"),
+            (.japanese, "食べ物を購入", "メインメニューを表示"),
+            (.korean, "먹이 구매", "메인 메뉴 열기"),
+            (.simplifiedChinese, "购买食物", "呼出菜单"),
+            (.traditionalChinese, "購買食物", "呼出選單")
+        ]
+
+        for (language, buyFood, showMainMenu) in expectedText {
+            settings.language = language
+            XCTAssertEqual(settings.text(.buyFood), buyFood)
+            XCTAssertEqual(settings.text(.showMainMenu), showMainMenu)
+        }
+    }
+
+    @MainActor
     func testUpdateVersionComparisonRecognizesOnlyNewerStableReleases() {
         XCTAssertTrue(AppUpdateAvailability.isNewerRelease(tagName: "v0.9.8", than: "0.9.7"))
         XCTAssertTrue(AppUpdateAvailability.isNewerRelease(tagName: "0.10.0", than: "0.9.9"))

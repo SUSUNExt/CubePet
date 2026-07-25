@@ -5,6 +5,7 @@ import SwiftUI
 struct ShortcutSettingsView: View {
     @ObservedObject var shortcutSettings: ShortcutSettings
     @ObservedObject var languageSettings: LanguageSettings
+    let onSaveShortcut: (KeyboardShortcutDefinition) -> Bool
     let onClose: () -> Void
 
     @State private var draftShortcut: KeyboardShortcutDefinition
@@ -14,10 +15,12 @@ struct ShortcutSettingsView: View {
     init(
         shortcutSettings: ShortcutSettings,
         languageSettings: LanguageSettings,
+        onSaveShortcut: @escaping (KeyboardShortcutDefinition) -> Bool,
         onClose: @escaping () -> Void
     ) {
         self.shortcutSettings = shortcutSettings
         self.languageSettings = languageSettings
+        self.onSaveShortcut = onSaveShortcut
         self.onClose = onClose
         _draftShortcut = State(initialValue: shortcutSettings.shortcut)
     }
@@ -69,9 +72,12 @@ struct ShortcutSettingsView: View {
                 .keyboardShortcut(.cancelAction)
 
                 Button(languageSettings.shortcutText(.save)) {
-                    shortcutSettings.shortcut = draftShortcut
-                    message = nil
-                    onClose()
+                    if onSaveShortcut(draftShortcut) {
+                        message = nil
+                        onClose()
+                    } else {
+                        message = languageSettings.shortcutText(.shortcutUnavailable)
+                    }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(!draftShortcut.isValid)

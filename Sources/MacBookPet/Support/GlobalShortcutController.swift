@@ -1,5 +1,4 @@
 import Carbon
-import Combine
 import Foundation
 
 final class GlobalShortcutController {
@@ -11,22 +10,16 @@ final class GlobalShortcutController {
             | UInt32(ascii: "e") << 8
             | UInt32(ascii: "t")
     )
-    private let hotKeyID = UInt32(1)
+    private var activeHotKeyID: UInt32?
+    private var nextHotKeyID: UInt32 = 1
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private var cancellable: AnyCancellable?
 
     init(settings: ShortcutSettings, onShortcut: @escaping @MainActor () -> Void) {
         self.settings = settings
         self.onShortcut = onShortcut
         installEventHandler()
-        register(shortcut: settings.shortcut)
-
-        cancellable = settings.$shortcut
-            .dropFirst()
-            .sink { [weak self] shortcut in
-                self?.register(shortcut: shortcut)
-            }
+        registerInitialShortcut(settings.shortcut)
     }
 
     deinit {
@@ -72,10 +65,14 @@ final class GlobalShortcutController {
         )
     }
 
-    private func register(shortcut: KeyboardShortcutDefinition) {
-        unregisterHotKey()
+    /// Registers a candidate before replacing the active hotkey, so a conflict
+    /// cannot leave the user without their previous shortcut.
+    @discardableResult
+    func register(shortcut: KeyboardShortcutDefinition) -> Bool {
+        guard shortcut.isValid else { return false }
+        if hotKeyRef != nil, settings.shortcut == shortcut { return true }
 
-        let eventHotKeyID = EventHotKeyID(signature: signature, id: hotKeyID)
+        let eventHotKeyID = makeEventHotKeyID()
         var newHotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
             shortcut.keyCode,
@@ -86,9 +83,44 @@ final class GlobalShortcutController {
             &newHotKeyRef
         )
 
-        if status == noErr {
-            hotKeyRef = newHotKeyRef
+        guard status == noErr, let newHotKeyRef else { return false }
+
+        let previousHotKeyRef = hotKeyRef
+        hotKeyRef = newHotKeyRef
+        activeHotKeyID = eventHotKeyID.id
+        if let previousHotKeyRef {
+            UnregisterEventHotKey(previousHotKeyRef)
         }
+        settings.saveRegisteredShortcut(shortcut)
+        return true
+    }
+
+    private func registerInitialShortcut(_ shortcut: KeyboardShortcutDefinition) {
+        guard shortcut.isValid else { return }
+
+        let eventHotKeyID = makeEventHotKeyID()
+        var newHotKeyRef: EventHotKeyRef?
+        let status = RegisterEventHotKey(
+            shortcut.keyCode,
+            shortcut.carbonModifiers,
+            eventHotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &newHotKeyRef
+        )
+
+        guard status == noErr, let newHotKeyRef else { return }
+        hotKeyRef = newHotKeyRef
+        activeHotKeyID = eventHotKeyID.id
+    }
+
+    private func makeEventHotKeyID() -> EventHotKeyID {
+        let id = nextHotKeyID
+        nextHotKeyID &+= 1
+        if nextHotKeyID == 0 {
+            nextHotKeyID = 1
+        }
+        return EventHotKeyID(signature: signature, id: id)
     }
 
     private func unregisterHotKey() {
@@ -96,10 +128,11 @@ final class GlobalShortcutController {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
         }
+        activeHotKeyID = nil
     }
 
     private func handle(hotKeyID: EventHotKeyID) {
-        guard hotKeyID.signature == signature, hotKeyID.id == self.hotKeyID else { return }
+        guard let activeHotKeyID, hotKeyID.signature == signature, hotKeyID.id == activeHotKeyID else { return }
         Task { @MainActor in
             onShortcut()
         }

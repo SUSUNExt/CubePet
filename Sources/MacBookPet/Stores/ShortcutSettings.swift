@@ -4,11 +4,7 @@ import Foundation
 final class ShortcutSettings: ObservableObject {
     private static let shortcutKey = "MacBookPet.menuShortcut"
 
-    @Published var shortcut: KeyboardShortcutDefinition {
-        didSet {
-            saveShortcut()
-        }
-    }
+    @Published private(set) var shortcut: KeyboardShortcutDefinition
 
     private let defaults: UserDefaults
 
@@ -26,8 +22,10 @@ final class ShortcutSettings: ObservableObject {
         }
     }
 
-    func restoreDefault() {
-        shortcut = .defaultShortcut
+    func saveRegisteredShortcut(_ shortcut: KeyboardShortcutDefinition) {
+        guard shortcut.isValid else { return }
+        self.shortcut = shortcut
+        saveShortcut()
     }
 
     private func saveShortcut() {

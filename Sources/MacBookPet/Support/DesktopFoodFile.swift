@@ -96,9 +96,13 @@ enum DesktopFoodFile {
     }
 
     private static func makeIcon(drawing: () -> Void) -> NSImage {
-        let size = NSSize(width: 512, height: 512)
+        // 256 px is more than enough for a Finder desktop icon and keeps the
+        // generated custom icon light when several foods are placed on disk.
+        let size = NSSize(width: 256, height: 256)
         let image = NSImage(size: size)
         image.lockFocus()
+
+        NSGraphicsContext.current?.cgContext.scaleBy(x: 0.5, y: 0.5)
 
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: size).fill()
@@ -112,89 +116,108 @@ enum DesktopFoodFile {
 
     private static func cookieIcon() -> NSImage {
         makeIcon {
-            let cookieRect = NSRect(x: 48, y: 48, width: 416, height: 416)
-            NSColor(calibratedRed: 0.76, green: 0.45, blue: 0.20, alpha: 1).setFill()
+            let cookieRect = NSRect(x: 50, y: 50, width: 412, height: 412)
+            let outline = NSColor(calibratedRed: 0.28, green: 0.13, blue: 0.07, alpha: 1)
+            outline.setFill()
             NSBezierPath(ovalIn: cookieRect).fill()
 
-            NSColor(calibratedRed: 0.92, green: 0.64, blue: 0.31, alpha: 1).setFill()
-            NSBezierPath(ovalIn: cookieRect.insetBy(dx: 18, dy: 18)).fill()
+            let dough = cookieRect.insetBy(dx: 20, dy: 20)
+            NSColor(calibratedRed: 0.96, green: 0.67, blue: 0.30, alpha: 1).setFill()
+            NSBezierPath(ovalIn: dough).fill()
 
-            NSColor(calibratedRed: 0.25, green: 0.12, blue: 0.06, alpha: 1).setFill()
+            NSColor(calibratedRed: 1.0, green: 0.82, blue: 0.46, alpha: 1).setStroke()
+            let rim = NSBezierPath(ovalIn: dough.insetBy(dx: 24, dy: 24))
+            rim.lineWidth = 12
+            rim.stroke()
+
+            outline.setFill()
             for point in [
-                NSPoint(x: 170, y: 340),
-                NSPoint(x: 320, y: 360),
-                NSPoint(x: 380, y: 245),
-                NSPoint(x: 260, y: 260),
-                NSPoint(x: 145, y: 205),
-                NSPoint(x: 300, y: 135)
+                NSPoint(x: 165, y: 335), NSPoint(x: 310, y: 360),
+                NSPoint(x: 370, y: 250), NSPoint(x: 255, y: 260),
+                NSPoint(x: 145, y: 205), NSPoint(x: 300, y: 135)
             ] {
-                NSBezierPath(ovalIn: NSRect(x: point.x - 24, y: point.y - 24, width: 48, height: 48)).fill()
+                NSBezierPath(ovalIn: NSRect(x: point.x - 21, y: point.y - 21, width: 42, height: 42)).fill()
+            }
+
+            NSColor(calibratedRed: 1.0, green: 0.88, blue: 0.58, alpha: 0.9).setFill()
+            for rect in [NSRect(x: 132, y: 294, width: 46, height: 20), NSRect(x: 280, y: 190, width: 30, height: 15)] {
+                NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10).fill()
             }
         }
     }
 
     private static func energyBarIcon() -> NSImage {
         makeIcon {
-            let barRect = NSRect(x: 62, y: 112, width: 388, height: 288)
-            NSColor(calibratedRed: 0.25, green: 0.10, blue: 0.045, alpha: 1).setFill()
+            let barRect = NSRect(x: 48, y: 116, width: 416, height: 280)
+            let outline = NSColor(calibratedRed: 0.13, green: 0.17, blue: 0.24, alpha: 1)
+            outline.setFill()
             NSBezierPath(roundedRect: barRect, xRadius: 42, yRadius: 42).fill()
 
-            let horizontalInset: CGFloat = 22
-            let verticalInset: CGFloat = 20
-            let gap: CGFloat = 12
-            let squareWidth = (barRect.width - horizontalInset * 2 - gap * 2) / 3
-            let squareHeight = (barRect.height - verticalInset * 2 - gap) / 2
+            let wrapper = barRect.insetBy(dx: 18, dy: 18)
+            NSColor(calibratedRed: 0.25, green: 0.76, blue: 0.70, alpha: 1).setFill()
+            NSBezierPath(roundedRect: wrapper, xRadius: 30, yRadius: 30).fill()
 
-            for row in 0..<2 {
-                for column in 0..<3 {
-                    let square = NSRect(
-                        x: barRect.minX + horizontalInset + CGFloat(column) * (squareWidth + gap),
-                        y: barRect.minY + verticalInset + CGFloat(row) * (squareHeight + gap),
-                        width: squareWidth,
-                        height: squareHeight
-                    )
-                    NSColor(calibratedRed: 0.48, green: 0.23, blue: 0.10, alpha: 1).setFill()
-                    NSBezierPath(roundedRect: square, xRadius: 20, yRadius: 20).fill()
-
-                    NSColor(calibratedRed: 0.62, green: 0.34, blue: 0.16, alpha: 1).setStroke()
-                    let highlight = NSBezierPath(roundedRect: square.insetBy(dx: 9, dy: 9), xRadius: 14, yRadius: 14)
-                    highlight.lineWidth = 7
-                    highlight.stroke()
-                }
+            NSColor(calibratedRed: 0.13, green: 0.53, blue: 0.54, alpha: 1).setFill()
+            for x in [wrapper.minX + 28, wrapper.maxX - 62] {
+                NSBezierPath(roundedRect: NSRect(x: x, y: wrapper.minY + 8, width: 34, height: wrapper.height - 16), xRadius: 15, yRadius: 15).fill()
             }
+
+            NSColor(calibratedRed: 1.0, green: 0.82, blue: 0.24, alpha: 1).setFill()
+            let bolt = NSBezierPath()
+            bolt.move(to: NSPoint(x: 278, y: 348))
+            bolt.line(to: NSPoint(x: 204, y: 252))
+            bolt.line(to: NSPoint(x: 254, y: 252))
+            bolt.line(to: NSPoint(x: 222, y: 164))
+            bolt.line(to: NSPoint(x: 326, y: 280))
+            bolt.line(to: NSPoint(x: 274, y: 280))
+            bolt.close()
+            bolt.fill()
+
+            NSColor(calibratedRed: 0.76, green: 0.96, blue: 0.88, alpha: 0.9).setStroke()
+            let shine = NSBezierPath()
+            shine.move(to: NSPoint(x: 108, y: 346))
+            shine.line(to: NSPoint(x: 196, y: 346))
+            shine.lineWidth = 12
+            shine.lineCapStyle = .round
+            shine.stroke()
         }
     }
 
     private static func petColaIcon() -> NSImage {
         makeIcon {
-            let canRect = NSRect(x: 134, y: 48, width: 244, height: 416)
-            NSColor(calibratedRed: 0.84, green: 0.08, blue: 0.10, alpha: 1).setFill()
-            NSBezierPath(roundedRect: canRect, xRadius: 54, yRadius: 54).fill()
+            let outline = NSColor(calibratedRed: 0.17, green: 0.12, blue: 0.15, alpha: 1)
+            let bottle = NSBezierPath(roundedRect: NSRect(x: 126, y: 56, width: 260, height: 344), xRadius: 62, yRadius: 62)
+            outline.setFill()
+            bottle.fill()
 
-            NSColor(calibratedWhite: 0.90, alpha: 1).setFill()
-            NSBezierPath(ovalIn: NSRect(x: 134, y: 408, width: 244, height: 70)).fill()
-            NSBezierPath(ovalIn: NSRect(x: 134, y: 34, width: 244, height: 70)).fill()
+            let label = NSRect(x: 144, y: 128, width: 224, height: 178)
+            NSColor(calibratedRed: 0.95, green: 0.34, blue: 0.31, alpha: 1).setFill()
+            NSBezierPath(roundedRect: label, xRadius: 38, yRadius: 38).fill()
+
+            NSColor(calibratedRed: 1.0, green: 0.84, blue: 0.30, alpha: 1).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 177, y: 386, width: 158, height: 48), xRadius: 18, yRadius: 18).fill()
+            outline.setStroke()
+            let capLine = NSBezierPath()
+            capLine.move(to: NSPoint(x: 190, y: 410))
+            capLine.line(to: NSPoint(x: 322, y: 410))
+            capLine.lineWidth = 8
+            capLine.stroke()
 
             NSColor.white.setFill()
-            NSColor.white.setStroke()
-            let wave = NSBezierPath()
-            wave.move(to: NSPoint(x: 154, y: 190))
-            wave.curve(
-                to: NSPoint(x: 358, y: 320),
-                controlPoint1: NSPoint(x: 210, y: 300),
-                controlPoint2: NSPoint(x: 296, y: 204)
-            )
-            wave.lineWidth = 34
-            wave.lineCapStyle = .round
-            wave.stroke()
-
-            for bubble in [
-                NSRect(x: 190, y: 328, width: 34, height: 34),
-                NSRect(x: 275, y: 350, width: 24, height: 24),
-                NSRect(x: 310, y: 145, width: 30, height: 30)
-            ] {
-                NSBezierPath(ovalIn: bubble).fill()
+            let paw = NSBezierPath()
+            paw.appendOval(in: NSRect(x: 211, y: 164, width: 92, height: 78))
+            for toe in [NSRect(x: 187, y: 236, width: 40, height: 48), NSRect(x: 236, y: 254, width: 40, height: 50), NSRect(x: 285, y: 236, width: 40, height: 48)] {
+                paw.appendOval(in: toe)
             }
+            paw.fill()
+
+            NSColor(calibratedRed: 1.0, green: 0.62, blue: 0.55, alpha: 0.95).setStroke()
+            let shine = NSBezierPath()
+            shine.move(to: NSPoint(x: 158, y: 334))
+            shine.line(to: NSPoint(x: 185, y: 362))
+            shine.lineWidth = 14
+            shine.lineCapStyle = .round
+            shine.stroke()
         }
     }
 }

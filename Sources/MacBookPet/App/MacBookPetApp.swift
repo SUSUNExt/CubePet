@@ -22,6 +22,7 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
     private let languageSettings = LanguageSettings()
     private let appearanceSettings = PetAppearanceSettings()
     private let menuStyleSettings = MenuStyleSettings()
+    private let menuFontSettings = MenuFontSettings()
     private let shortcutSettings = ShortcutSettings()
     private let launchAtLoginController = LaunchAtLoginController()
 
@@ -176,12 +177,6 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             languageSettings: languageSettings
         )
         self.petCustomizationWindowController = petCustomizationWindowController
-        let shortcutSettingsWindowController = ShortcutSettingsWindowController(
-            shortcutSettings: shortcutSettings,
-            languageSettings: languageSettings
-        )
-        self.shortcutSettingsWindowController = shortcutSettingsWindowController
-
         let updateAvailability = AppUpdateAvailability()
         let statusItemController = StatusItemController(
             feedSettings: feedSettings,
@@ -191,6 +186,7 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             hungerStore: hungerStore,
             appearanceSettings: appearanceSettings,
             menuStyleSettings: menuStyleSettings,
+            menuFontSettings: menuFontSettings,
             customizationStore: customizationStore,
             featureEntitlementStore: featureEntitlementStore,
             shortcutSettings: shortcutSettings,
@@ -202,8 +198,8 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             onShowPetCustomization: { [weak petCustomizationWindowController] in
                 petCustomizationWindowController?.show()
             },
-            onShowShortcutSettings: { [weak shortcutSettingsWindowController] in
-                shortcutSettingsWindowController?.show()
+            onShowShortcutSettings: { [weak self] in
+                self?.shortcutSettingsWindowController?.show()
             },
             onQuit: { NSApp.terminate(nil) }
         )
@@ -223,6 +219,15 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
                 statusItemController?.showMenuFromShortcut()
             }
         )
+
+        let shortcutSettingsWindowController = ShortcutSettingsWindowController(
+            shortcutSettings: shortcutSettings,
+            languageSettings: languageSettings,
+            onSaveShortcut: { [weak self] shortcut in
+                self?.globalShortcutController?.register(shortcut: shortcut) == true
+            }
+        )
+        self.shortcutSettingsWindowController = shortcutSettingsWindowController
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

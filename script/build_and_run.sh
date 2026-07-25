@@ -5,7 +5,7 @@ MODE="${1:-run}"
 APP_NAME="MacBookPet"
 DISPLAY_NAME="CubePet"
 BUNDLE_ID="com.susunext.MacBookPet"
-APP_VERSION="0.9.8"
+APP_VERSION="0.9.9"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

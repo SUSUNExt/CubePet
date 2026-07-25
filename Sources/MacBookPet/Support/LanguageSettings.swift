@@ -54,11 +54,17 @@ enum AppText {
     case airDropUnavailable
     case airDropUnavailableMessage
     case foodCreationFailed
+    case buyFood
+    case showMainMenu
     case petCustomization
     case petCustomizationLocked
     case petCustomizationLockedMessage
     case shortcutSettings
     case menuAppearance
+    case menuFont
+    case menuFontSystem
+    case menuFontHannotate
+    case menuFontYuppy
     case menuStyleDefault
     case menuStyleLiquidGlass
     case menuStyleDark
@@ -72,6 +78,7 @@ enum ShortcutSettingsText {
     case recordShortcut
     case pressNewShortcut
     case needsModifier
+    case shortcutUnavailable
     case restoreDefault
     case cancel
     case save
@@ -591,6 +598,7 @@ final class LanguageSettings: ObservableObject {
         case (.english, .recordShortcut): "Click to change"
         case (.english, .pressNewShortcut): "Press a new shortcut"
         case (.english, .needsModifier): "Press a normal key together with Control, Option, Command, or Shift."
+        case (.english, .shortcutUnavailable): "This shortcut is already in use. Your current shortcut was kept."
         case (.english, .restoreDefault): "Restore Default"
         case (.english, .cancel): "Cancel"
         case (.english, .save): "Save"
@@ -600,6 +608,7 @@ final class LanguageSettings: ObservableObject {
         case (.japanese, .recordShortcut): "クリックして変更"
         case (.japanese, .pressNewShortcut): "新しいショートカットを押してください"
         case (.japanese, .needsModifier): "Control、Option、Command、Shiftのいずれかと通常キーを同時に押してください。"
+        case (.japanese, .shortcutUnavailable): "このショートカットはすでに使用されています。現在のショートカットは保持されました。"
         case (.japanese, .restoreDefault): "デフォルトに戻す"
         case (.japanese, .cancel): "キャンセル"
         case (.japanese, .save): "保存"
@@ -609,6 +618,7 @@ final class LanguageSettings: ObservableObject {
         case (.korean, .recordShortcut): "클릭하여 변경"
         case (.korean, .pressNewShortcut): "새 단축키를 누르세요"
         case (.korean, .needsModifier): "Control, Option, Command, Shift 중 하나와 일반 키를 함께 누르세요."
+        case (.korean, .shortcutUnavailable): "이 단축키는 이미 사용 중입니다. 현재 단축키는 유지되었습니다."
         case (.korean, .restoreDefault): "기본값 복원"
         case (.korean, .cancel): "취소"
         case (.korean, .save): "저장"
@@ -618,6 +628,7 @@ final class LanguageSettings: ObservableObject {
         case (.simplifiedChinese, .recordShortcut): "点击修改"
         case (.simplifiedChinese, .pressNewShortcut): "请按下新的快捷键"
         case (.simplifiedChinese, .needsModifier): "请同时按下普通按键和 Control、Option、Command 或 Shift。"
+        case (.simplifiedChinese, .shortcutUnavailable): "该快捷键已被系统或其他应用占用，已保留原快捷键。"
         case (.simplifiedChinese, .restoreDefault): "恢复默认"
         case (.simplifiedChinese, .cancel): "取消"
         case (.simplifiedChinese, .save): "保存"
@@ -627,6 +638,7 @@ final class LanguageSettings: ObservableObject {
         case (.traditionalChinese, .recordShortcut): "點擊修改"
         case (.traditionalChinese, .pressNewShortcut): "請按下新的快速鍵"
         case (.traditionalChinese, .needsModifier): "請同時按下普通按鍵和 Control、Option、Command 或 Shift。"
+        case (.traditionalChinese, .shortcutUnavailable): "此快速鍵已被系統或其他應用程式使用，已保留原快速鍵。"
         case (.traditionalChinese, .restoreDefault): "恢復預設"
         case (.traditionalChinese, .cancel): "取消"
         case (.traditionalChinese, .save): "儲存"
@@ -864,11 +876,17 @@ final class LanguageSettings: ObservableObject {
         case .airDropUnavailable: "AirDrop Unavailable"
         case .airDropUnavailableMessage: "AirDrop is unavailable for the dropped items."
         case .foodCreationFailed: "Could Not Create Food"
+        case .buyFood: "Buy Food"
+        case .showMainMenu: "Show Main Menu"
         case .petCustomization: "Pet Customization"
         case .petCustomizationLocked: "Pet Customization Is Locked"
         case .petCustomizationLockedMessage: "Unlock this feature to create custom pets, import state images, and arrange visual modules."
         case .shortcutSettings: "Shortcut Settings"
         case .menuAppearance: "Menu Appearance"
+        case .menuFont: "Menu Font"
+        case .menuFontSystem: "System Default"
+        case .menuFontHannotate: "Handwritten"
+        case .menuFontYuppy: "Yuppy"
         case .menuStyleDefault: "Follow System"
         case .menuStyleLiquidGlass: "Liquid Glass"
         case .menuStyleDark: "Dark appearance"
@@ -912,11 +930,17 @@ final class LanguageSettings: ObservableObject {
         case .airDropUnavailable: "AirDropを使用できません"
         case .airDropUnavailableMessage: "ドロップした項目をAirDropで送信できません。"
         case .foodCreationFailed: "食べ物を作成できませんでした"
+        case .buyFood: "食べ物を購入"
+        case .showMainMenu: "メインメニューを表示"
         case .petCustomization: "ペットのカスタマイズ"
         case .petCustomizationLocked: "ペットのカスタマイズはロックされています"
         case .petCustomizationLockedMessage: "ロックを解除すると、カスタムペットの作成、状態画像の読み込み、視覚モジュールの配置ができます。"
         case .shortcutSettings: "ショートカット設定"
         case .menuAppearance: "メニューの外観"
+        case .menuFont: "メニューのフォント"
+        case .menuFontSystem: "システム標準"
+        case .menuFontHannotate: "手札体"
+        case .menuFontYuppy: "ヤッピー体"
         case .menuStyleDefault: "システムに合わせる"
         case .menuStyleLiquidGlass: "リキッドグラス"
         case .menuStyleDark: "ダーク外観"
@@ -960,11 +984,17 @@ final class LanguageSettings: ObservableObject {
         case .airDropUnavailable: "AirDrop을 사용할 수 없음"
         case .airDropUnavailableMessage: "드롭한 항목을 AirDrop으로 보낼 수 없습니다."
         case .foodCreationFailed: "먹이 파일을 만들 수 없음"
+        case .buyFood: "먹이 구매"
+        case .showMainMenu: "메인 메뉴 열기"
         case .petCustomization: "펫 커스터마이징"
         case .petCustomizationLocked: "펫 커스터마이징이 잠겨 있습니다"
         case .petCustomizationLockedMessage: "잠금을 해제하면 커스텀 펫을 만들고 상태 이미지를 가져오며 시각 모듈을 배치할 수 있습니다."
         case .shortcutSettings: "단축키 설정"
         case .menuAppearance: "메뉴 모양"
+        case .menuFont: "메뉴 글꼴"
+        case .menuFontSystem: "시스템 기본값"
+        case .menuFontHannotate: "손글씨체"
+        case .menuFontYuppy: "야피체"
         case .menuStyleDefault: "시스템 설정 따르기"
         case .menuStyleLiquidGlass: "리퀴드 글래스"
         case .menuStyleDark: "다크 모드 모양"
@@ -1008,11 +1038,17 @@ final class LanguageSettings: ObservableObject {
         case .airDropUnavailable: "隔空投送不可用"
         case .airDropUnavailableMessage: "无法通过隔空投送发送拖入的项目。"
         case .foodCreationFailed: "无法创建食物"
+        case .buyFood: "购买食物"
+        case .showMainMenu: "呼出菜单"
         case .petCustomization: "宠物自定义"
         case .petCustomizationLocked: "宠物自定义尚未解锁"
         case .petCustomizationLockedMessage: "解锁后可以创建自定义宠物、导入状态图片并调整视觉模块。"
         case .shortcutSettings: "快捷键设置"
         case .menuAppearance: "菜单外观"
+        case .menuFont: "字体设置"
+        case .menuFontSystem: "系统默认"
+        case .menuFontHannotate: "手札体"
+        case .menuFontYuppy: "雅痞"
         case .menuStyleDefault: "跟随系统"
         case .menuStyleLiquidGlass: "液态玻璃"
         case .menuStyleDark: "黑夜模式"
@@ -1056,11 +1092,17 @@ final class LanguageSettings: ObservableObject {
         case .airDropUnavailable: "AirDrop無法使用"
         case .airDropUnavailableMessage: "無法透過AirDrop傳送拖入的項目。"
         case .foodCreationFailed: "無法建立食物"
+        case .buyFood: "購買食物"
+        case .showMainMenu: "呼出選單"
         case .petCustomization: "寵物自訂"
         case .petCustomizationLocked: "寵物自訂尚未解鎖"
         case .petCustomizationLockedMessage: "解鎖後可以建立自訂寵物、匯入狀態圖片並調整視覺模組。"
         case .shortcutSettings: "快速鍵設定"
         case .menuAppearance: "選單外觀"
+        case .menuFont: "字體設定"
+        case .menuFontSystem: "系統預設"
+        case .menuFontHannotate: "手札體"
+        case .menuFontYuppy: "雅痞"
         case .menuStyleDefault: "跟隨系統"
         case .menuStyleLiquidGlass: "液態玻璃"
         case .menuStyleDark: "夜間模式"

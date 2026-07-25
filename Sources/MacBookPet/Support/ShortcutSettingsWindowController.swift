@@ -5,17 +5,24 @@ import SwiftUI
 final class ShortcutSettingsWindowController {
     private let shortcutSettings: ShortcutSettings
     private let languageSettings: LanguageSettings
+    private let onSaveShortcut: (KeyboardShortcutDefinition) -> Bool
     private var window: NSWindow?
 
-    init(shortcutSettings: ShortcutSettings, languageSettings: LanguageSettings) {
+    init(
+        shortcutSettings: ShortcutSettings,
+        languageSettings: LanguageSettings,
+        onSaveShortcut: @escaping (KeyboardShortcutDefinition) -> Bool
+    ) {
         self.shortcutSettings = shortcutSettings
         self.languageSettings = languageSettings
+        self.onSaveShortcut = onSaveShortcut
     }
 
     func show() {
         let rootView = ShortcutSettingsView(
             shortcutSettings: shortcutSettings,
             languageSettings: languageSettings,
+            onSaveShortcut: onSaveShortcut,
             onClose: { [weak self] in self?.window?.close() }
         )
         let hostingController = NSHostingController(rootView: rootView)

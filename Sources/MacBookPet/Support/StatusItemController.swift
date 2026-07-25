@@ -45,6 +45,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         keyEquivalent: ""
     )
     private let menuAppearanceItem = NSMenuItem()
+    private let menuFontItem = NSMenuItem()
     private let launchAtLoginItem = NSMenuItem(
         title: "",
         action: #selector(toggleLaunchAtLogin),
@@ -63,6 +64,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let hungerStore: PetHungerStore
     private let appearanceSettings: PetAppearanceSettings
     private let menuStyleSettings: MenuStyleSettings
+    private let menuFontSettings: MenuFontSettings
     private let customizationStore: PetCustomizationStore
     private let featureEntitlementStore: FeatureEntitlementStore
     private let shortcutSettings: ShortcutSettings
@@ -76,6 +78,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var showsSystemInfo: Bool
     private var languageMenuItems: [AppLanguage: NSMenuItem] = [:]
     private var menuAppearanceMenuItems: [MenuStyle: NSMenuItem] = [:]
+    private var menuFontMenuItems: [MenuFont: NSMenuItem] = [:]
     private var petMenuItems: [String: NSMenuItem] = [:]
     private var skinMenuItems: [String: NSMenuItem] = [:]
     private var shopFoodMenuItems: [String: NSMenuItem] = [:]
@@ -83,6 +86,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var shopPetMenuItems: [String: NSMenuItem] = [:]
     private var latestMetrics = SystemMetricsSnapshot()
     private var lastPetContextMenuOpenTime: TimeInterval = 0
+    private var isRootMenuOpen = false
     private var cancellables = Set<AnyCancellable>()
     private let rootMenu = NSMenu()
 
@@ -94,6 +98,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         hungerStore: PetHungerStore,
         appearanceSettings: PetAppearanceSettings,
         menuStyleSettings: MenuStyleSettings,
+        menuFontSettings: MenuFontSettings,
         customizationStore: PetCustomizationStore,
         featureEntitlementStore: FeatureEntitlementStore,
         shortcutSettings: ShortcutSettings,
@@ -111,6 +116,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.hungerStore = hungerStore
         self.appearanceSettings = appearanceSettings
         self.menuStyleSettings = menuStyleSettings
+        self.menuFontSettings = menuFontSettings
         self.customizationStore = customizationStore
         self.featureEntitlementStore = featureEntitlementStore
         self.shortcutSettings = shortcutSettings
@@ -171,9 +177,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             guard let self else { return }
             self.latestMetrics = snapshot
             self.updateMetricsMenuState()
-        }
-        if showsSystemInfo {
-            metricsMonitor.start()
         }
     }
 
@@ -265,14 +268,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        guard menu === rootMenu else { return }
+        isRootMenuOpen = true
         progressStore.synchronizeRuntime(ageStore.totalRuntime)
         hungerStore.refresh()
         refreshPetMenu()
         applyMenuStyle()
         updateLocalizedText()
+        if showsSystemInfo {
+            metricsMonitor.start()
+        }
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        guard menu === rootMenu else { return }
+        isRootMenuOpen = false
+        metricsMonitor.stop()
         updateMetricsMenuState()
         updateProgressMenuState()
     }
@@ -295,6 +306,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateLocalizedText()
 
         let menu = makePetContextMenu()
+        applyMenuStyle(to: menu)
         _ = menu.popUp(positioning: nil, at: screenPoint, in: nil)
     }
 
@@ -304,6 +316,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateLocalizedText()
 
         guard let menu = shopFoodItem.submenu else { return }
+        applyMenuStyle(to: menu)
         _ = menu.popUp(positioning: nil, at: screenPoint, in: nil)
     }
 
@@ -311,6 +324,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateLocalizedText()
 
         guard let menu = settingItem.submenu else { return }
+        applyMenuStyle(to: menu)
         _ = menu.popUp(positioning: nil, at: screenPoint, in: nil)
     }
 
@@ -333,8 +347,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func applyMenuStyle() {
-        applyMenuAppearance(to: rootMenu)
-        rootMenu.update()
+        applyMenuStyle(to: rootMenu)
+    }
+
+    private func applyMenuStyle(to menu: NSMenu) {
+        applyMenuAppearance(to: menu)
+        applyMenuFont(to: menu)
+        menu.update()
     }
 
     private func applyMenuAppearance(to menu: NSMenu) {
@@ -343,6 +362,38 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             if let submenu = item.submenu {
                 applyMenuAppearance(to: submenu)
             }
+        }
+    }
+
+    private func applyMenuFont(to menu: NSMenu) {
+        let font = menuFontSettings.font.menuFont
+        for item in menu.items where !item.isSeparatorItem {
+            applyMenuFont(to: item, font: font)
+            if let submenu = item.submenu {
+                applyMenuFont(to: submenu)
+            }
+        }
+    }
+
+    private func applyMenuFont(to item: NSMenuItem, font: NSFont) {
+        if let rowView = item.view as? FixedMenuStatusRowView {
+            rowView.applyMenuFont(font)
+        } else if let rowView = item.view as? FixedMenuMeterRowView {
+            rowView.applyMenuFont(font)
+        }
+
+        let currentTitle = item.attributedTitle
+        guard !item.title.isEmpty || (currentTitle?.length ?? 0) > 0 else { return }
+
+        if let currentTitle,
+           currentTitle.length > 0,
+           currentTitle.attribute(.paragraphStyle, at: 0, effectiveRange: nil) != nil ||
+           currentTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) != nil {
+            let title = NSMutableAttributedString(attributedString: currentTitle)
+            title.addAttribute(NSAttributedString.Key.font, value: font, range: NSRange(location: 0, length: title.length))
+            item.attributedTitle = title
+        } else {
+            item.attributedTitle = NSAttributedString(string: item.title, attributes: [.font: font])
         }
     }
 
@@ -367,6 +418,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menuStyleSettings.select(style)
         applyMenuStyle()
         updateMenuAppearanceMenuState()
+    }
+
+    @objc private func selectMenuFont(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let font = MenuFont(rawValue: rawValue)
+        else { return }
+
+        menuFontSettings.select(font)
+        applyMenuStyle()
+        updateMenuFontMenuState()
     }
 
     @objc private func toggleLaunchAtLogin() {
@@ -406,7 +468,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         showsSystemInfo.toggle()
         UserDefaults.standard.set(showsSystemInfo, forKey: Self.showsSystemInfoKey)
 
-        if showsSystemInfo {
+        if showsSystemInfo, isRootMenuOpen {
             metricsMonitor.start()
         } else {
             metricsMonitor.stop()
@@ -714,6 +776,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menuAppearanceItem.submenu = appearanceMenu
         menu.addItem(menuAppearanceItem)
 
+        let fontMenu = NSMenu()
+        fontMenu.autoenablesItems = false
+        menuFontMenuItems.removeAll()
+        for font in MenuFont.selectableCases {
+            let item = NSMenuItem(title: "", action: #selector(selectMenuFont(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = font.rawValue
+            fontMenu.addItem(item)
+            menuFontMenuItems[font] = item
+        }
+        menuFontItem.image = NSImage(systemSymbolName: "textformat", accessibilityDescription: nil)
+        menuFontItem.submenu = fontMenu
+        menu.addItem(menuFontItem)
+
         shortcutSettingsItem.target = self
         shortcutSettingsItem.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: nil)
         menu.addItem(shortcutSettingsItem)
@@ -763,7 +839,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let foodItem = NSMenuItem(title: "购买食物", action: nil, keyEquivalent: "")
+        let foodItem = NSMenuItem(
+            title: languageSettings.text(.buyFood),
+            action: nil,
+            keyEquivalent: ""
+        )
         foodItem.image = NSImage(
             systemSymbolName: "takeoutbag.and.cup.and.straw",
             accessibilityDescription: languageSettings.text(.food)
@@ -772,7 +852,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(foodItem)
 
         let summonMenuItem = NSMenuItem(
-            title: "呼出菜单",
+            title: languageSettings.text(.showMainMenu),
             action: #selector(showRootMenuFromPetContext),
             keyEquivalent: ""
         )
@@ -939,6 +1019,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         for style in MenuStyle.selectableCases {
             menuAppearanceMenuItems[style]?.title = menuStyleTitle(style)
         }
+        menuFontItem.title = languageSettings.text(.menuFont)
+        for font in MenuFont.selectableCases {
+            menuFontMenuItems[font]?.title = menuFontTitle(font)
+        }
         feedItem.title = languageSettings.text(.eatAction)
         languageItem.title = languageSettings.text(.language)
         showSystemInfoItem.title = languageSettings.text(.showSystemInfo)
@@ -953,7 +1037,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateShopMenuState()
         updateLanguageMenuState()
         updateMenuAppearanceMenuState()
+        updateMenuFontMenuState()
         updateSystemInfoVisibility()
+        applyMenuFont(to: rootMenu)
     }
 
     private func updateUpdateAvailableMenuState() {
@@ -995,6 +1081,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func updateMenuAppearanceMenuState() {
         for style in MenuStyle.selectableCases {
             menuAppearanceMenuItems[style]?.state = menuStyleSettings.style == style ? .on : .off
+        }
+    }
+
+    private func updateMenuFontMenuState() {
+        for font in MenuFont.selectableCases {
+            menuFontMenuItems[font]?.state = menuFontSettings.font == font ? .on : .off
+        }
+    }
+
+    private func menuFontTitle(_ font: MenuFont) -> String {
+        switch font {
+        case .system:
+            languageSettings.text(.menuFontSystem)
+        case .hannotate:
+            languageSettings.text(.menuFontHannotate)
+        case .yuppy:
+            languageSettings.text(.menuFontYuppy)
         }
     }
 
@@ -1108,7 +1211,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func foodStoreTitle(_ food: FoodDefinition) -> NSAttributedString {
-        let font = NSFont.menuFont(ofSize: 0)
+        let font = menuFontSettings.font.menuFont
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.tabStops = [NSTextTab(textAlignment: .right, location: foodPriceTabLocation(font: font))]
 
@@ -1379,6 +1482,11 @@ private final class FixedMenuStatusRowView: NSView {
         leftLabel.stringValue = left
         rightLabel.stringValue = right
     }
+
+    func applyMenuFont(_ font: NSFont) {
+        leftLabel.font = font
+        rightLabel.font = font
+    }
 }
 
 private final class FixedMenuMeterRowView: NSView {
@@ -1450,6 +1558,11 @@ private final class FixedMenuMeterRowView: NSView {
         titleLabel.stringValue = label
         valueLabel.stringValue = valueText
         progressIndicator.doubleValue = min(max(fraction, 0), 1)
+    }
+
+    func applyMenuFont(_ font: NSFont) {
+        titleLabel.font = font
+        valueLabel.font = font
     }
 }
 
