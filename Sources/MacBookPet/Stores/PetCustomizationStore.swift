@@ -6,6 +6,7 @@ final class PetCustomizationStore: ObservableObject {
     @Published private(set) var visualOverrides: [String: PetVisualConfiguration] = [:]
     @Published private(set) var customPets: [CustomPetDefinition] = []
     @Published private(set) var eyePresets: [PetEyePreset] = []
+    @Published private(set) var musicReactionSettings = MusicReactionSettings()
 
     private let fileManager: FileManager
     private let configurationFileURL: URL?
@@ -240,6 +241,18 @@ final class PetCustomizationStore: ObservableObject {
         }
     }
 
+    func setMusicReactionEnabled(_ isEnabled: Bool) throws {
+        try updateMusicReactionSettings { $0.isEnabled = isEnabled }
+    }
+
+    func setMusicSwayingEnabled(_ isEnabled: Bool) throws {
+        try updateMusicReactionSettings { $0.isSwayingEnabled = isEnabled }
+    }
+
+    func setMusicNotesEnabled(_ isEnabled: Bool) throws {
+        try updateMusicReactionSettings { $0.areMusicNotesEnabled = isEnabled }
+    }
+
     private func loadDocument() {
         if
             let configurationFileURL,
@@ -249,6 +262,7 @@ final class PetCustomizationStore: ObservableObject {
             visualOverrides = document.visualOverrides
             customPets = document.customPets.filter { $0.id.hasPrefix("custom:") }
             eyePresets = document.eyePresets.filter { $0.id.hasPrefix("eye:") }
+            musicReactionSettings = document.musicReactionSettings
             return
         }
 
@@ -277,12 +291,30 @@ final class PetCustomizationStore: ObservableObject {
         let document = PetCustomizationDocument(
             visualOverrides: visualOverrides,
             customPets: customPets,
-            eyePresets: eyePresets
+            eyePresets: eyePresets,
+            musicReactionSettings: musicReactionSettings
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(document)
         try data.write(to: configurationFileURL, options: .atomic)
+    }
+
+    private func updateMusicReactionSettings(
+        _ update: (inout MusicReactionSettings) -> Void
+    ) throws {
+        let previous = musicReactionSettings
+        var updated = previous
+        update(&updated)
+        guard updated != previous else { return }
+
+        musicReactionSettings = updated
+        do {
+            try persistDocument()
+        } catch {
+            musicReactionSettings = previous
+            throw error
+        }
     }
 
     private func validateAssets(in configuration: PetVisualConfiguration) throws {
@@ -349,16 +381,19 @@ private struct PetCustomizationDocument: Codable {
     var visualOverrides: [String: PetVisualConfiguration]
     var customPets: [CustomPetDefinition]
     var eyePresets: [PetEyePreset]
+    var musicReactionSettings: MusicReactionSettings
 
     init(
         visualOverrides: [String: PetVisualConfiguration],
         customPets: [CustomPetDefinition],
-        eyePresets: [PetEyePreset]
+        eyePresets: [PetEyePreset],
+        musicReactionSettings: MusicReactionSettings
     ) {
-        schemaVersion = 2
+        schemaVersion = 3
         self.visualOverrides = visualOverrides
         self.customPets = customPets
         self.eyePresets = eyePresets
+        self.musicReactionSettings = musicReactionSettings
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -366,6 +401,7 @@ private struct PetCustomizationDocument: Codable {
         case visualOverrides
         case customPets
         case eyePresets
+        case musicReactionSettings
     }
 
     init(from decoder: Decoder) throws {
@@ -377,6 +413,10 @@ private struct PetCustomizationDocument: Codable {
         ) ?? [:]
         customPets = try container.decodeIfPresent([CustomPetDefinition].self, forKey: .customPets) ?? []
         eyePresets = try container.decodeIfPresent([PetEyePreset].self, forKey: .eyePresets) ?? []
+        musicReactionSettings = try container.decodeIfPresent(
+            MusicReactionSettings.self,
+            forKey: .musicReactionSettings
+        ) ?? MusicReactionSettings()
     }
 }
 

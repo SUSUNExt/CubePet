@@ -27,7 +27,7 @@ struct TrackingEyesView: View {
                 DefaultCatEyePairView(
                     configuration: configuration,
                     isBlinking: effectiveBlinking,
-                    gazeOffset: effectiveGaze,
+                    gazeOffset: effectivePupilGaze,
                     additionalOffset: additionalOffset
                 )
             } else {
@@ -67,6 +67,11 @@ struct TrackingEyesView: View {
 
     private var effectiveGaze: CGSize {
         configuration.followsMouse(for: expression) ? gazeOffset : .zero
+    }
+
+    private var effectivePupilGaze: CGSize {
+        let scale = CGFloat(configuration.resolvedPupilGazeScale)
+        return CGSize(width: effectiveGaze.width * scale, height: effectiveGaze.height * scale)
     }
 
     private var eyeColor: Color {
@@ -140,13 +145,13 @@ private struct DefaultCatEyePairView: View {
 
     var body: some View {
         EyePairLayout(configuration: configuration, additionalOffset: additionalOffset) {
-            catEye
+            catEye(isLeft: true)
         } rightEye: {
-            catEye
+            catEye(isLeft: false)
         }
     }
 
-    private var catEye: some View {
+    private func catEye(isLeft: Bool) -> some View {
         ZStack {
             Circle()
                 .fill(.white)
@@ -162,11 +167,19 @@ private struct DefaultCatEyePairView: View {
                     .fill(.black)
                     .frame(width: 5.6, height: 5.6)
                     .scaleEffect(CGFloat(configuration.resolvedPupilScale))
-                    .offset(gazeOffset)
+                    .offset(
+                        x: gazeOffset.width + pupilOffsetX(isLeft: isLeft),
+                        y: gazeOffset.height
+                    )
                     .animation(.easeOut(duration: 0.10), value: gazeOffset)
             }
         }
         .frame(width: 14, height: 14)
+    }
+
+    private func pupilOffsetX(isLeft: Bool) -> CGFloat {
+        let spacing = CGFloat(configuration.resolvedPupilSpacing)
+        return isLeft ? -spacing : spacing
     }
 }
 

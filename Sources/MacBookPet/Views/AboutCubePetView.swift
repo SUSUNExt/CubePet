@@ -54,7 +54,7 @@ struct AboutCubePetView: View {
     }
 
     private var versionText: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.9"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.95"
         return "\(languageSettings.text(.version)) \(version)"
     }
 }

@@ -122,6 +122,93 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertTrue(configuration.resolvedGravityEnabled)
     }
 
+    func testMusicReactionDefaultsToSwayingOn() {
+        XCTAssertTrue(MusicReactionSettings().isSwayingEnabled)
+    }
+
+    func testSupportedThirdPartyMusicAppsAreRecognizedByBundleIdentifier() {
+        XCTAssertTrue(
+            MusicPlaybackMonitor.isSupportedThirdPartyMusicApp(
+                bundleIdentifier: "com.netease.163music",
+                displayName: nil
+            )
+        )
+        XCTAssertFalse(
+            MusicPlaybackMonitor.isSupportedThirdPartyMusicApp(
+                bundleIdentifier: "com.apple.Music",
+                displayName: "Music"
+            )
+        )
+        for identifier in [
+            "com.tencent.QQMusicMac",
+            "com.kugou.kugou1002",
+            "com.kugou.KugouMusic",
+            "com.kugou.music"
+        ] {
+            XCTAssertTrue(
+                MusicPlaybackMonitor.isSupportedThirdPartyMusicApp(
+                    bundleIdentifier: identifier,
+                    displayName: nil
+                )
+            )
+        }
+    }
+
+    func testSupportedThirdPartyMusicAppsAreRecognizedByDisplayName() {
+        for name in ["网易云音乐", "QQ音乐", "酷狗音乐"] {
+            XCTAssertTrue(
+                MusicPlaybackMonitor.isSupportedThirdPartyMusicApp(
+                    bundleIdentifier: nil,
+                    displayName: name
+                )
+            )
+        }
+    }
+
+    func testMusicPlaybackQueryFailureEndsMusicReaction() {
+        XCTAssertFalse(MusicPlaybackMonitor.resolvedPlaybackState([nil]))
+        XCTAssertFalse(MusicPlaybackMonitor.resolvedPlaybackState([false, nil]))
+        XCTAssertTrue(MusicPlaybackMonitor.resolvedPlaybackState([false, nil, true]))
+    }
+
+    func testListeningUsesTheHappyVisualExpression() {
+        switch PetExpression.listening.visualRenderingExpression {
+        case .happy:
+            break
+        default:
+            XCTFail("Listening should render the same facial expression as happy.")
+        }
+    }
+
+    @MainActor
+    func testMusicReactionSettingsPersistAcrossStoreReload() throws {
+        let fileManager = FileManager.default
+        let temporaryRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? fileManager.removeItem(at: temporaryRoot) }
+
+        let store = PetCustomizationStore(
+            fileManager: fileManager,
+            customRootURL: temporaryRoot
+        )
+        try store.setMusicReactionEnabled(true)
+        try store.setMusicSwayingEnabled(false)
+        try store.setMusicNotesEnabled(false)
+
+        let reloadedStore = PetCustomizationStore(
+            fileManager: fileManager,
+            customRootURL: temporaryRoot
+        )
+        XCTAssertEqual(
+            reloadedStore.musicReactionSettings,
+            MusicReactionSettings(
+                isEnabled: true,
+                isSwayingEnabled: false,
+                areMusicNotesEnabled: false
+            )
+        )
+    }
+
     @MainActor
     func testCustomPetCanBeUpdatedAndDeletedWithItsUnusedAsset() throws {
         let fileManager = FileManager.default
@@ -465,9 +552,12 @@ final class PetCustomizationStoreTests: XCTestCase {
     }
 
     func testYellowCatOfficialDefaultsUseBakedStateArtwork() {
-        let configuration = PetVisualDefaults.cat(skinID: "cat.yellow")
+        var configuration = PetVisualDefaults.cat(skinID: "cat.yellow")
 
         XCTAssertTrue(configuration.resolvedBottomPetEnabled)
+        XCTAssertFalse(configuration.resolvedMusicSwayingEnabled)
+        configuration.setMusicSwayingEnabled(true)
+        XCTAssertTrue(configuration.resolvedMusicSwayingEnabled)
         for state in PetVisualState.allCases {
             XCTAssertNil(configuration.configuration(for: state).eyes)
         }
@@ -479,14 +569,32 @@ final class PetCustomizationStoreTests: XCTestCase {
             configuration.configuration(for: .happy).baseOffset,
             NormalizedVisualOffset(x: 0.015151515151515152, y: 0.16666666666666663)
         )
+        XCTAssertEqual(
+            configuration.configuration(for: .sleeping).baseOffset,
+            NormalizedVisualOffset(x: 0, y: 0.159090909090909)
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .eating).base,
+            .bundledAsset(name: "CatPetYellowEatingOfficial689cdacb")
+        )
         for state in PetVisualState.allCases {
             XCTAssertEqual(configuration.configuration(for: state).resolvedBaseScale, 1.1)
         }
     }
 
+    func testRestoringYellowMusicSwayingUsesItsOfficialDefault() {
+        let official = PetVisualDefaults.cat(skinID: "cat.yellow")
+        var configuration = official
+        configuration.setMusicSwayingEnabled(true)
+
+        configuration.restoreMusicSwayingEnabled(from: official)
+
+        XCTAssertFalse(configuration.resolvedMusicSwayingEnabled)
+    }
+
     func testShibaOfficialDefaultsMatchApprovedCustomPetPlacement() throws {
         XCTAssertEqual(PetCatalog.dog.name, .dog)
-        XCTAssertEqual(PetCatalog.dog.skins.map(\.name), [.shibaClassic])
+        XCTAssertEqual(PetCatalog.dog.skins.map(\.name), [.shibaClassic, .beagle])
 
         let configuration = PetVisualDefaults.configuration(
             petID: PetCatalog.dog.id,
@@ -531,6 +639,58 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertNil(configuration.configuration(for: .sleeping).eyes)
         XCTAssertNil(configuration.configuration(for: .eating).eyes)
         XCTAssertNil(configuration.configuration(for: .hungry).eyes)
+    }
+
+    func testBeagleOfficialDefaultsMatchApprovedCustomPetLayout() throws {
+        let configuration = PetVisualDefaults.configuration(
+            petID: PetCatalog.dog.id,
+            skinID: "dog.beagle"
+        )
+        let normalEyes = try XCTUnwrap(configuration.configuration(for: .normal).eyes)
+
+        XCTAssertEqual(PetCatalog.dog.skins.last?.name, .beagle)
+        XCTAssertEqual(
+            configuration.configuration(for: .normal).base,
+            .bundledAsset(name: "BeaglePetNormal")
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .happy).base,
+            .bundledAsset(name: "BeaglePetHappy")
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .scared).base,
+            .bundledAsset(name: "BeaglePetScared")
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .sleeping).base,
+            .bundledAsset(name: "BeaglePetSleeping")
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .eating).base,
+            .bundledAsset(name: "BeaglePetEating")
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .hungry).base,
+            .bundledAsset(name: "BeaglePetHungry")
+        )
+        XCTAssertEqual(normalEyes.kind, .catDefault)
+        XCTAssertEqual(normalEyes.center.x, 0.47362294823232326)
+        XCTAssertEqual(normalEyes.center.y, 0.3209635416666667)
+        XCTAssertEqual(normalEyes.scale, 0.9880995639534884)
+        XCTAssertEqual(normalEyes.spacing, -0.42475328947368496)
+        XCTAssertEqual(normalEyes.resolvedOuterEyeScale, 0.9554764597039475)
+        XCTAssertEqual(normalEyes.resolvedPupilScale, 0.670178865131579)
+        XCTAssertEqual(normalEyes.resolvedPupilSpacing, -1.263928865131579)
+        XCTAssertEqual(normalEyes.resolvedPupilGazeScale, 0.30499588815789475)
+        XCTAssertEqual(configuration.configuration(for: .scared).resolvedBaseScale, 1.05)
+        XCTAssertEqual(
+            configuration.configuration(for: .sleeping).baseOffset,
+            NormalizedVisualOffset(x: 0, y: 0.1515151515151515)
+        )
+        XCTAssertEqual(
+            configuration.configuration(for: .sleeping).resolvedSleepingEffect,
+            .bubbles
+        )
     }
 
     func testSiameseOfficialDefaultsMatchApprovedEditorPlacement() throws {
@@ -654,6 +814,10 @@ final class PetCustomizationStoreTests: XCTestCase {
         let styles = scaredEyes.eyeStyles(for: .calm)
         XCTAssertEqual(styles.left, .chevronRight)
         XCTAssertEqual(styles.right, .chevronLeft)
+    }
+
+    func testListeningExpressionUsesHappyVisualState() {
+        XCTAssertEqual(PetVisualState(expression: .listening), .happy)
     }
 
     @MainActor
@@ -842,6 +1006,8 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertEqual(configuration.resolvedColorMode, .automatic)
         XCTAssertEqual(configuration.resolvedOuterEyeScale, 1)
         XCTAssertEqual(configuration.resolvedPupilScale, 1)
+        XCTAssertEqual(configuration.resolvedPupilSpacing, 0)
+        XCTAssertEqual(configuration.resolvedPupilGazeScale, 1)
         configuration.setEyesAligned(false)
         XCTAssertFalse(configuration.areEyesAligned)
         XCTAssertEqual(configuration.leftEyeOffset, .zero)
@@ -851,6 +1017,8 @@ final class PetCustomizationStoreTests: XCTestCase {
         configuration.colorMode = .white
         configuration.outerEyeScale = 1.25
         configuration.pupilScale = 0.75
+        configuration.pupilSpacing = 1.5
+        configuration.pupilGazeScale = 0.4
         let roundTripData = try JSONEncoder().encode(configuration)
         let decoded = try JSONDecoder().decode(
             PetEyeModuleConfiguration.self,
@@ -860,6 +1028,8 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertEqual(decoded.resolvedColorMode, .white)
         XCTAssertEqual(decoded.resolvedOuterEyeScale, 1.25)
         XCTAssertEqual(decoded.resolvedPupilScale, 0.75)
+        XCTAssertEqual(decoded.resolvedPupilSpacing, 1.5)
+        XCTAssertEqual(decoded.resolvedPupilGazeScale, 0.4)
 
         configuration.setEyesAligned(true)
         XCTAssertTrue(configuration.areEyesAligned)

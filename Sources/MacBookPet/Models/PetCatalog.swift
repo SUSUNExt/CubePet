@@ -14,6 +14,7 @@ enum PetSkinName {
     case catSiamese
     case catYellow
     case shibaClassic
+    case beagle
 }
 
 enum PetName {
@@ -176,6 +177,13 @@ enum PetCatalog {
                 id: "dog.shiba",
                 name: .shibaClassic,
                 color: NSColor(srgbRed: 0.88, green: 0.42, blue: 0.12, alpha: 1),
+                unlockLevel: 1,
+                price: 0
+            ),
+            PetSkinDefinition(
+                id: "dog.beagle",
+                name: .beagle,
+                color: NSColor(srgbRed: 0.73, green: 0.48, blue: 0.24, alpha: 1),
                 unlockLevel: 1,
                 price: 0
             )

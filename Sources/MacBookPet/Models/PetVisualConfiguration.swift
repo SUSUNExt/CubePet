@@ -10,7 +10,9 @@ enum PetVisualState: String, CaseIterable, Codable {
 
     init(expression: PetExpression) {
         switch expression {
-        case .happy:
+        // Music playback uses the same happy artwork as a click reaction.
+        // The listening motion is applied independently by `PetView`.
+        case .happy, .listening:
             self = .happy
         case .scared:
             self = .scared
@@ -26,6 +28,8 @@ enum PetVisualState: String, CaseIterable, Codable {
 
 enum PetBaseVisualSource: Equatable, Codable {
     case officialSkin
+    /// A shipped state image that is rendered as a complete official visual.
+    case bundledAsset(name: String)
     case importedAsset(id: String)
 }
 
@@ -85,6 +89,10 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
     var colorMode: PetEyeColorMode?
     var outerEyeScale: Double?
     var pupilScale: Double?
+    /// The horizontal separation added between the two pupils, without moving the eye whites.
+    var pupilSpacing: Double?
+    /// A per-state multiplier for how far the pupils follow the pointer.
+    var pupilGazeScale: Double?
     /// A user-imported eye image, rendered as a pair instead of an official eye style.
     var customAssetID: String?
 
@@ -99,6 +107,8 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
         colorMode: PetEyeColorMode? = nil,
         outerEyeScale: Double? = nil,
         pupilScale: Double? = nil,
+        pupilSpacing: Double? = nil,
+        pupilGazeScale: Double? = nil,
         customAssetID: String? = nil
     ) {
         self.kind = kind
@@ -111,6 +121,8 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
         self.colorMode = colorMode
         self.outerEyeScale = outerEyeScale
         self.pupilScale = pupilScale
+        self.pupilSpacing = pupilSpacing
+        self.pupilGazeScale = pupilGazeScale
         self.customAssetID = customAssetID
     }
 
@@ -124,6 +136,14 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
 
     var resolvedPupilScale: Double {
         pupilScale ?? 1
+    }
+
+    var resolvedPupilSpacing: Double {
+        pupilSpacing ?? 0
+    }
+
+    var resolvedPupilGazeScale: Double {
+        pupilGazeScale ?? 1
     }
 
     var areEyesAligned: Bool {
@@ -241,6 +261,8 @@ struct PetStateVisualConfiguration: Equatable, Codable {
 struct PetVisualConfiguration: Equatable, Codable {
     private var states: [PetVisualState: PetStateVisualConfiguration]
     private var bottomPetEnabled: Bool?
+    /// `nil` preserves the standard music-swaying behavior for existing pets.
+    private var musicSwayingEnabled: Bool?
     /// `nil` preserves normal gravity for configurations saved before this
     /// preference was introduced.
     private var gravityEnabled: Bool?
@@ -248,10 +270,12 @@ struct PetVisualConfiguration: Equatable, Codable {
     init(
         states: [PetVisualState: PetStateVisualConfiguration],
         bottomPetEnabled: Bool? = nil,
+        musicSwayingEnabled: Bool? = nil,
         gravityEnabled: Bool? = nil
     ) {
         self.states = states
         self.bottomPetEnabled = bottomPetEnabled
+        self.musicSwayingEnabled = musicSwayingEnabled
         self.gravityEnabled = gravityEnabled
     }
 
@@ -282,12 +306,24 @@ struct PetVisualConfiguration: Equatable, Codable {
         gravityEnabled ?? true
     }
 
+    var resolvedMusicSwayingEnabled: Bool {
+        musicSwayingEnabled ?? true
+    }
+
     mutating func setBottomPetEnabled(_ isEnabled: Bool) {
         bottomPetEnabled = isEnabled
     }
 
     mutating func setGravityEnabled(_ isEnabled: Bool) {
         gravityEnabled = isEnabled
+    }
+
+    mutating func setMusicSwayingEnabled(_ isEnabled: Bool) {
+        musicSwayingEnabled = isEnabled
+    }
+
+    mutating func restoreMusicSwayingEnabled(from official: PetVisualConfiguration) {
+        musicSwayingEnabled = official.musicSwayingEnabled
     }
 
     mutating func setConfiguration(
@@ -306,6 +342,9 @@ struct PetVisualConfiguration: Equatable, Codable {
         var result = self
         if result.bottomPetEnabled == nil {
             result.bottomPetEnabled = defaults.bottomPetEnabled
+        }
+        if result.musicSwayingEnabled == nil {
+            result.musicSwayingEnabled = defaults.musicSwayingEnabled
         }
         if result.gravityEnabled == nil {
             result.gravityEnabled = defaults.gravityEnabled
@@ -330,7 +369,7 @@ enum PetVisualDefaults {
         case PetCatalog.cat.id:
             return cat(skinID: skinID)
         case PetCatalog.dog.id:
-            return shiba
+            return dog(skinID: skinID)
         default:
             return cube
         }
@@ -425,6 +464,62 @@ enum PetVisualDefaults {
                 eyes: nil,
                 baseOffset: NormalizedVisualOffset(x: 0, y: 0.06060606060606061),
                 baseScale: 1.1
+            )
+        ]
+    )
+
+    static func dog(skinID: String) -> PetVisualConfiguration {
+        switch skinID {
+        case "dog.beagle":
+            return beagle
+        default:
+            return shiba
+        }
+    }
+
+    // Promoted from the approved "垂耳小猎犬" custom pet. Every state is
+    // shipped in the app bundle so this skin remains available without the
+    // original user's Application Support customization files.
+    static let beagle = PetVisualConfiguration(
+        states: [
+            .normal: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetNormal"),
+                eyes: PetEyeModuleConfiguration(
+                    kind: .catDefault,
+                    center: NormalizedVisualPoint(
+                        x: 0.47362294823232326,
+                        y: 0.3209635416666667
+                    ),
+                    scale: 0.9880995639534884,
+                    spacing: -0.42475328947368496,
+                    outerEyeScale: 0.9554764597039475,
+                    pupilScale: 0.670178865131579,
+                    pupilSpacing: -1.263928865131579,
+                    pupilGazeScale: 0.30499588815789475
+                )
+            ),
+            .happy: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetHappy"),
+                eyes: nil
+            ),
+            .scared: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetScared"),
+                eyes: nil,
+                baseScale: 1.05
+            ),
+            .sleeping: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetSleeping"),
+                eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.1515151515151515),
+                sleepingEffect: .bubbles
+            ),
+            .eating: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetEating"),
+                eyes: nil
+            ),
+            .hungry: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "BeaglePetHungry"),
+                eyes: nil
             )
         ]
     )
@@ -716,9 +811,9 @@ enum PetVisualDefaults {
         ]
     )
 
-    // Yellow Xiaohuang uses complete, state-specific artwork. The offsets are
-    // promoted from its approved custom-pet layout so it is aligned from the
-    // first launch without a local customization file.
+    // Yellow Xiaohuang uses complete, state-specific artwork. The offsets and
+    // scale are promoted from its approved in-app layout so it is aligned from
+    // the first launch without a local customization file.
     private static let yellow = PetVisualConfiguration(
         states: [
             .normal: PetStateVisualConfiguration(
@@ -745,11 +840,11 @@ enum PetVisualDefaults {
             .sleeping: PetStateVisualConfiguration(
                 base: .officialSkin,
                 eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.1515151515151515),
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.159090909090909),
                 baseScale: 1.1
             ),
             .eating: PetStateVisualConfiguration(
-                base: .officialSkin,
+                base: .bundledAsset(name: "CatPetYellowEatingOfficial689cdacb"),
                 eyes: nil,
                 baseOffset: NormalizedVisualOffset(x: 0, y: 0.16666666666666663),
                 baseScale: 1.1
@@ -761,7 +856,8 @@ enum PetVisualDefaults {
                 baseScale: 1.1
             )
         ],
-        bottomPetEnabled: true
+        bottomPetEnabled: true,
+        musicSwayingEnabled: false
     )
 
     private static func configuration(

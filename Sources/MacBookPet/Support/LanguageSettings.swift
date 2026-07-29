@@ -91,6 +91,28 @@ enum LaunchAtLoginText {
     case updateFailedTitle
 }
 
+enum PermissionSettingsText {
+    case title
+    case description
+    case inputMonitoringTitle
+    case inputMonitoringDescription
+    case allowed
+    case notAllowed
+    case openInputMonitoringSettings
+    case musicPermissionsTitle
+    case musicPermissionsDescription
+    case neteaseMusicTitle
+    case qqMusicTitle
+    case kugouMusicTitle
+    case musicPlaybackDescription
+    case thirdPartyMusicAutomationHint
+    case automationTitle
+    case automationDescription
+    case automationHint
+    case openAutomationSettings
+    case refreshStatus
+}
+
 enum PetCustomizationText {
     case normal
     case happy
@@ -105,6 +127,9 @@ enum PetCustomizationText {
     case addFrames
     case actionFrequency
     case bottomPet
+    case followMusic
+    case musicSwaying
+    case musicNotes
     case gravity
     case sleepingBreath
     case sleepingBreathHint
@@ -138,6 +163,8 @@ enum PetCustomizationText {
     case increaseSize
     case whiteSize
     case pupilSize
+    case pupilSpacing
+    case pupilGazeScale
     case spacing
     case moveSkinLeft
     case moveSkinRight
@@ -215,6 +242,9 @@ final class LanguageSettings: ObservableObject {
         case (.english, .addFrames): "Add Image Frames..."
         case (.english, .actionFrequency): "Action frequency"
         case (.english, .bottomPet): "Bottom Pet"
+        case (.english, .followMusic): "Follow Music"
+        case (.english, .musicSwaying): "Swaying"
+        case (.english, .musicNotes): "Music Notes"
         case (.english, .gravity): "Gravity"
         case (.english, .sleepingBreath): "Breathing effect"
         case (.english, .sleepingBreathHint): "Single images are recommended to use this effect."
@@ -248,6 +278,8 @@ final class LanguageSettings: ObservableObject {
         case (.english, .increaseSize): "Increase display size"
         case (.english, .whiteSize): "White Size"
         case (.english, .pupilSize): "Pupil Size"
+        case (.english, .pupilSpacing): "Pupil Spacing"
+        case (.english, .pupilGazeScale): "Pupil Movement"
         case (.english, .spacing): "Spacing"
         case (.english, .moveSkinLeft): "Move skin left"
         case (.english, .moveSkinRight): "Move skin right"
@@ -292,6 +324,9 @@ final class LanguageSettings: ObservableObject {
         case (.japanese, .addFrames): "連番画像を追加..."
         case (.japanese, .actionFrequency): "アクション頻度"
         case (.japanese, .bottomPet): "下部ペット"
+        case (.japanese, .followMusic): "音楽に合わせる"
+        case (.japanese, .musicSwaying): "揺れ"
+        case (.japanese, .musicNotes): "音符"
         case (.japanese, .gravity): "重力"
         case (.japanese, .sleepingBreath): "呼吸エフェクト"
         case (.japanese, .sleepingBreathHint): "1枚の画像での使用をおすすめします。"
@@ -325,6 +360,8 @@ final class LanguageSettings: ObservableObject {
         case (.japanese, .increaseSize): "表示サイズを大きくする"
         case (.japanese, .whiteSize): "白目サイズ"
         case (.japanese, .pupilSize): "瞳サイズ"
+        case (.japanese, .pupilSpacing): "瞳孔の間隔"
+        case (.japanese, .pupilGazeScale): "瞳孔の移動量"
         case (.japanese, .spacing): "間隔"
         case (.japanese, .moveSkinLeft): "スキンを左へ移動"
         case (.japanese, .moveSkinRight): "スキンを右へ移動"
@@ -369,6 +406,9 @@ final class LanguageSettings: ObservableObject {
         case (.korean, .addFrames): "이미지 프레임 추가..."
         case (.korean, .actionFrequency): "동작 빈도"
         case (.korean, .bottomPet): "바닥 펫"
+        case (.korean, .followMusic): "음악 따라가기"
+        case (.korean, .musicSwaying): "흔들기"
+        case (.korean, .musicNotes): "음표"
         case (.korean, .gravity): "중력"
         case (.korean, .sleepingBreath): "호흡 효과"
         case (.korean, .sleepingBreathHint): "단일 이미지에서 사용하는 것을 권장합니다."
@@ -402,6 +442,8 @@ final class LanguageSettings: ObservableObject {
         case (.korean, .increaseSize): "표시 크기 늘리기"
         case (.korean, .whiteSize): "흰자 크기"
         case (.korean, .pupilSize): "동공 크기"
+        case (.korean, .pupilSpacing): "동공 간격"
+        case (.korean, .pupilGazeScale): "동공 이동량"
         case (.korean, .spacing): "간격"
         case (.korean, .moveSkinLeft): "스킨을 왼쪽으로 이동"
         case (.korean, .moveSkinRight): "스킨을 오른쪽으로 이동"
@@ -446,6 +488,9 @@ final class LanguageSettings: ObservableObject {
         case (.simplifiedChinese, .addFrames): "添加多帧图片..."
         case (.simplifiedChinese, .actionFrequency): "小动作出现频率"
         case (.simplifiedChinese, .bottomPet): "底部宠物"
+        case (.simplifiedChinese, .followMusic): "跟随音乐"
+        case (.simplifiedChinese, .musicSwaying): "摇摆"
+        case (.simplifiedChinese, .musicNotes): "音符"
         case (.simplifiedChinese, .gravity): "重力"
         case (.simplifiedChinese, .sleepingBreath): "呼吸感"
         case (.simplifiedChinese, .sleepingBreathHint): "单张图片建议开启"
@@ -479,6 +524,8 @@ final class LanguageSettings: ObservableObject {
         case (.simplifiedChinese, .increaseSize): "放大展示大小"
         case (.simplifiedChinese, .whiteSize): "白色大小"
         case (.simplifiedChinese, .pupilSize): "黑眼珠大小"
+        case (.simplifiedChinese, .pupilSpacing): "黑眼珠间距"
+        case (.simplifiedChinese, .pupilGazeScale): "黑眼珠移动幅度"
         case (.simplifiedChinese, .spacing): "间距"
         case (.simplifiedChinese, .moveSkinLeft): "皮肤向左微调"
         case (.simplifiedChinese, .moveSkinRight): "皮肤向右微调"
@@ -523,6 +570,9 @@ final class LanguageSettings: ObservableObject {
         case (.traditionalChinese, .addFrames): "加入多影格圖片..."
         case (.traditionalChinese, .actionFrequency): "小動作出現頻率"
         case (.traditionalChinese, .bottomPet): "底部寵物"
+        case (.traditionalChinese, .followMusic): "跟隨音樂"
+        case (.traditionalChinese, .musicSwaying): "搖擺"
+        case (.traditionalChinese, .musicNotes): "音符"
         case (.traditionalChinese, .gravity): "重力"
         case (.traditionalChinese, .sleepingBreath): "呼吸感"
         case (.traditionalChinese, .sleepingBreathHint): "建議在單張圖片時開啟"
@@ -556,6 +606,8 @@ final class LanguageSettings: ObservableObject {
         case (.traditionalChinese, .increaseSize): "放大顯示大小"
         case (.traditionalChinese, .whiteSize): "白色大小"
         case (.traditionalChinese, .pupilSize): "黑眼珠大小"
+        case (.traditionalChinese, .pupilSpacing): "黑眼珠間距"
+        case (.traditionalChinese, .pupilGazeScale): "黑眼珠移動幅度"
         case (.traditionalChinese, .spacing): "間距"
         case (.traditionalChinese, .moveSkinLeft): "皮膚向左微調"
         case (.traditionalChinese, .moveSkinRight): "皮膚向右微調"
@@ -725,6 +777,7 @@ final class LanguageSettings: ObservableObject {
         case (.english, .catSiamese): "Fluffy Siamese Cat"
         case (.english, .catYellow): "Huang Xiaohuang"
         case (.english, .shibaClassic): "Shiba Inu"
+        case (.english, .beagle): "Beagle"
         case (.japanese, .classic): "黒ブロック"
         case (.japanese, .blue): "青ブロック"
         case (.japanese, .green): "緑ブロック"
@@ -738,6 +791,7 @@ final class LanguageSettings: ObservableObject {
         case (.japanese, .catSiamese): "ふわふわシャム猫"
         case (.japanese, .catYellow): "ホアン・シャオホアン"
         case (.japanese, .shibaClassic): "柴犬"
+        case (.japanese, .beagle): "ビーグル"
         case (.korean, .classic): "검은 블록"
         case (.korean, .blue): "파란 블록"
         case (.korean, .green): "초록 블록"
@@ -751,6 +805,7 @@ final class LanguageSettings: ObservableObject {
         case (.korean, .catSiamese): "복슬복슬 샴고양이"
         case (.korean, .catYellow): "황샤오황"
         case (.korean, .shibaClassic): "시바견"
+        case (.korean, .beagle): "비글"
         case (.simplifiedChinese, .classic): "黑块"
         case (.simplifiedChinese, .blue): "蓝块"
         case (.simplifiedChinese, .green): "绿块"
@@ -764,6 +819,7 @@ final class LanguageSettings: ObservableObject {
         case (.simplifiedChinese, .catSiamese): "蓬松暹罗猫"
         case (.simplifiedChinese, .catYellow): "黄小黄"
         case (.simplifiedChinese, .shibaClassic): "柴犬"
+        case (.simplifiedChinese, .beagle): "垂耳小猎犬"
         case (.traditionalChinese, .classic): "黑塊"
         case (.traditionalChinese, .blue): "藍塊"
         case (.traditionalChinese, .green): "綠塊"
@@ -777,6 +833,7 @@ final class LanguageSettings: ObservableObject {
         case (.traditionalChinese, .catSiamese): "蓬鬆暹羅貓"
         case (.traditionalChinese, .catYellow): "黃小黃"
         case (.traditionalChinese, .shibaClassic): "柴犬"
+        case (.traditionalChinese, .beagle): "垂耳小獵犬"
         }
     }
 
@@ -827,6 +884,106 @@ final class LanguageSettings: ObservableObject {
         case (.traditionalChinese, .approvalRequiredTitle): "請允許登入時自動啟動"
         case (.traditionalChinese, .approvalRequiredMessage): "請在系統設定中允許 CubePet，以完成登入時自動啟動。"
         case (.traditionalChinese, .updateFailedTitle): "無法更新登入時自動啟動"
+        }
+    }
+
+    func permissionSettingsText(_ key: PermissionSettingsText) -> String {
+        switch (language, key) {
+        case (.english, .title): "Permission Settings"
+        case (.english, .description): "Manage the macOS permissions CubePet uses."
+        case (.english, .inputMonitoringTitle): "Input Monitoring"
+        case (.english, .inputMonitoringDescription): "Lets CubePet notice when you release the mouse while dragging the pet."
+        case (.english, .allowed): "Allowed"
+        case (.english, .notAllowed): "Not Allowed"
+        case (.english, .openInputMonitoringSettings): "Open Input Monitoring Settings"
+        case (.english, .musicPermissionsTitle): "Music App Permissions"
+        case (.english, .musicPermissionsDescription): "Keep permissions for Apple Music and other music apps together."
+        case (.english, .neteaseMusicTitle): "NetEase Cloud Music"
+        case (.english, .qqMusicTitle): "QQ Music"
+        case (.english, .kugouMusicTitle): "KuGou Music"
+        case (.english, .musicPlaybackDescription): "Lets CubePet check whether music is playing so the pet can react."
+        case (.english, .thirdPartyMusicAutomationHint): "If macOS shows this app under Automation, allow CubePet to access its playback state."
+        case (.english, .automationTitle): "Apple Music Automation"
+        case (.english, .automationDescription): "Lets CubePet check whether Apple Music is playing so the pet can react."
+        case (.english, .automationHint): "macOS asks the first time Apple Music is detected. You can review the choice in Automation settings."
+        case (.english, .openAutomationSettings): "Open Automation Settings"
+        case (.english, .refreshStatus): "Refresh Status"
+        case (.japanese, .title): "アクセス権限"
+        case (.japanese, .description): "CubePet が使う macOS のアクセス権限を管理します。"
+        case (.japanese, .inputMonitoringTitle): "入力監視"
+        case (.japanese, .inputMonitoringDescription): "ペットをドラッグ中にマウスを離したことを CubePet が検出できるようにします。"
+        case (.japanese, .allowed): "許可済み"
+        case (.japanese, .notAllowed): "未許可"
+        case (.japanese, .openInputMonitoringSettings): "入力監視の設定を開く"
+        case (.japanese, .musicPermissionsTitle): "音楽アプリのアクセス権限"
+        case (.japanese, .musicPermissionsDescription): "Apple Music とほかの音楽アプリの権限をまとめて管理します。"
+        case (.japanese, .neteaseMusicTitle): "NetEase Cloud Music"
+        case (.japanese, .qqMusicTitle): "QQ Music"
+        case (.japanese, .kugouMusicTitle): "KuGou Music"
+        case (.japanese, .musicPlaybackDescription): "音楽が再生中かどうかを CubePet が確認し、ペットが反応できるようにします。"
+        case (.japanese, .thirdPartyMusicAutomationHint): "macOS のオートメーションにこのアプリが表示された場合は、CubePet に再生状態へのアクセスを許可してください。"
+        case (.japanese, .automationTitle): "Apple Music のオートメーション"
+        case (.japanese, .automationDescription): "Apple Music の再生状態を確認し、ペットが反応できるようにします。"
+        case (.japanese, .automationHint): "Apple Music を初めて検出したときに macOS が確認します。オートメーション設定で見直せます。"
+        case (.japanese, .openAutomationSettings): "オートメーション設定を開く"
+        case (.japanese, .refreshStatus): "状態を更新"
+        case (.korean, .title): "권한 설정"
+        case (.korean, .description): "CubePet이 사용하는 macOS 권한을 관리합니다."
+        case (.korean, .inputMonitoringTitle): "입력 모니터링"
+        case (.korean, .inputMonitoringDescription): "반려동물을 드래그할 때 마우스를 놓는 동작을 CubePet이 감지하도록 합니다."
+        case (.korean, .allowed): "허용됨"
+        case (.korean, .notAllowed): "허용되지 않음"
+        case (.korean, .openInputMonitoringSettings): "입력 모니터링 설정 열기"
+        case (.korean, .musicPermissionsTitle): "음악 앱 권한"
+        case (.korean, .musicPermissionsDescription): "Apple Music과 다른 음악 앱의 권한을 한곳에서 관리합니다."
+        case (.korean, .neteaseMusicTitle): "NetEase Cloud Music"
+        case (.korean, .qqMusicTitle): "QQ Music"
+        case (.korean, .kugouMusicTitle): "KuGou Music"
+        case (.korean, .musicPlaybackDescription): "CubePet이 음악 재생 여부를 확인하여 반려동물이 반응하도록 합니다."
+        case (.korean, .thirdPartyMusicAutomationHint): "macOS 자동화에 이 앱이 표시되면 CubePet이 재생 상태에 접근하도록 허용하세요."
+        case (.korean, .automationTitle): "Apple Music 자동화"
+        case (.korean, .automationDescription): "Apple Music 재생 여부를 확인하여 반려동물이 반응하도록 합니다."
+        case (.korean, .automationHint): "Apple Music을 처음 감지할 때 macOS가 권한을 요청합니다. 자동화 설정에서 확인할 수 있습니다."
+        case (.korean, .openAutomationSettings): "자동화 설정 열기"
+        case (.korean, .refreshStatus): "상태 새로 고침"
+        case (.simplifiedChinese, .title): "权限设置"
+        case (.simplifiedChinese, .description): "管理 CubePet 需要使用的 macOS 权限。"
+        case (.simplifiedChinese, .inputMonitoringTitle): "输入监控"
+        case (.simplifiedChinese, .inputMonitoringDescription): "让 CubePet 在拖动宠物时能识别鼠标松开。"
+        case (.simplifiedChinese, .allowed): "已允许"
+        case (.simplifiedChinese, .notAllowed): "未允许"
+        case (.simplifiedChinese, .openInputMonitoringSettings): "打开输入监控设置"
+        case (.simplifiedChinese, .musicPermissionsTitle): "音乐软件权限"
+        case (.simplifiedChinese, .musicPermissionsDescription): "将 Apple Music 和其他音乐软件的相关授权集中在这里管理。"
+        case (.simplifiedChinese, .neteaseMusicTitle): "网易云音乐"
+        case (.simplifiedChinese, .qqMusicTitle): "QQ 音乐"
+        case (.simplifiedChinese, .kugouMusicTitle): "酷狗音乐"
+        case (.simplifiedChinese, .musicPlaybackDescription): "让 CubePet 检查音乐是否正在播放，以切换宠物状态。"
+        case (.simplifiedChinese, .thirdPartyMusicAutomationHint): "如果 macOS 在“自动化”中显示此软件，请允许 CubePet 访问它的播放状态。"
+        case (.simplifiedChinese, .automationTitle): "Apple Music 自动化"
+        case (.simplifiedChinese, .automationDescription): "让 CubePet 检查 Apple Music 是否正在播放，以切换宠物状态。"
+        case (.simplifiedChinese, .automationHint): "首次检测到 Apple Music 时，macOS 会弹出授权提示；也可在“自动化”中查看或调整。"
+        case (.simplifiedChinese, .openAutomationSettings): "打开自动化设置"
+        case (.simplifiedChinese, .refreshStatus): "刷新状态"
+        case (.traditionalChinese, .title): "權限設定"
+        case (.traditionalChinese, .description): "管理 CubePet 需要使用的 macOS 權限。"
+        case (.traditionalChinese, .inputMonitoringTitle): "輸入監控"
+        case (.traditionalChinese, .inputMonitoringDescription): "讓 CubePet 在拖曳寵物時能辨識滑鼠鬆開。"
+        case (.traditionalChinese, .allowed): "已允許"
+        case (.traditionalChinese, .notAllowed): "未允許"
+        case (.traditionalChinese, .openInputMonitoringSettings): "開啟輸入監控設定"
+        case (.traditionalChinese, .musicPermissionsTitle): "音樂軟體權限"
+        case (.traditionalChinese, .musicPermissionsDescription): "將 Apple Music 和其他音樂軟體的相關授權集中在這裡管理。"
+        case (.traditionalChinese, .neteaseMusicTitle): "網易雲音樂"
+        case (.traditionalChinese, .qqMusicTitle): "QQ 音樂"
+        case (.traditionalChinese, .kugouMusicTitle): "酷狗音樂"
+        case (.traditionalChinese, .musicPlaybackDescription): "讓 CubePet 檢查音樂是否正在播放，以切換寵物狀態。"
+        case (.traditionalChinese, .thirdPartyMusicAutomationHint): "如果 macOS 在「自動化」中顯示此軟體，請允許 CubePet 存取它的播放狀態。"
+        case (.traditionalChinese, .automationTitle): "Apple Music 自動化"
+        case (.traditionalChinese, .automationDescription): "讓 CubePet 檢查 Apple Music 是否正在播放，以切換寵物狀態。"
+        case (.traditionalChinese, .automationHint): "首次偵測到 Apple Music 時，macOS 會跳出授權提示；也可在「自動化」中查看或調整。"
+        case (.traditionalChinese, .openAutomationSettings): "開啟自動化設定"
+        case (.traditionalChinese, .refreshStatus): "重新整理狀態"
         }
     }
 

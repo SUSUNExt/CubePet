@@ -64,7 +64,12 @@ struct PetView: View {
             at: date,
             isSleeping: isSleeping && sleepingBreathEnabled
         )
-        let listeningMotion = listeningMotion(at: date, isListening: isListening)
+        let listeningMotion = listeningMotion(
+            at: date,
+            isListening: isListening
+                && customizationStore.musicReactionSettings.isSwayingEnabled
+                && activeVisualConfiguration.resolvedMusicSwayingEnabled
+        )
 
         return ZStack(alignment: .bottomLeading) {
             Color.clear
@@ -83,7 +88,7 @@ struct PetView: View {
                     .allowsHitTesting(false)
             }
 
-            if isListening {
+            if isListening && customizationStore.musicReactionSettings.areMusicNotesEnabled {
                 MusicNotesView(date: date)
                     .allowsHitTesting(false)
             }
@@ -117,6 +122,7 @@ struct PetView: View {
     private func petBody(breathScale: CGFloat, listeningRotation: CGFloat) -> some View {
         let mouthOpen = motionState.feedMouthOpen
         let expression = visualExpression
+        let visualRenderingExpression = expression.visualRenderingExpression
         let configuration = activeVisualConfiguration
         let visualState: PetVisualState = mouthOpen > 0.02
             ? .eating
@@ -136,7 +142,19 @@ struct PetView: View {
                     baseOffset: stateConfiguration.baseOffset,
                     animationPlaybackRate: stateConfiguration.actionAnimationPlaybackRate,
                     configuration: stateConfiguration.eyes,
-                    expression: expression,
+                    expression: visualRenderingExpression,
+                    isBlinking: state.isBlinking,
+                    gazeOffset: motionState.gazeOffset,
+                    customEyeAsset: customEyeAsset,
+                    appliesVerticalBaseOffsetInView: appliesVerticalBaseOffsetInView
+                )
+            } else if let bundledAsset = bundledVisualAsset(for: stateConfiguration.base) {
+                ImportedPetVisualView(
+                    asset: bundledAsset,
+                    baseOffset: stateConfiguration.baseOffset,
+                    animationPlaybackRate: stateConfiguration.animationPlaybackRate,
+                    configuration: stateConfiguration.eyes,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     customEyeAsset: customEyeAsset,
@@ -148,7 +166,7 @@ struct PetView: View {
                     baseOffset: stateConfiguration.baseOffset,
                     animationPlaybackRate: stateConfiguration.animationPlaybackRate,
                     configuration: stateConfiguration.eyes,
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     customEyeAsset: customEyeAsset,
@@ -160,7 +178,7 @@ struct PetView: View {
                     baseOffset: stateConfiguration.baseOffset,
                     animationPlaybackRate: stateConfiguration.animationPlaybackRate,
                     configuration: stateConfiguration.eyes,
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     customEyeAsset: customEyeAsset,
@@ -171,7 +189,7 @@ struct PetView: View {
             case .cube:
                 CubePetView(
                     color: Color(nsColor: appearanceSettings.selectedSkin.color),
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     mouthOpen: mouthOpen,
@@ -181,7 +199,7 @@ struct PetView: View {
                 )
             case .frog:
                 FrogPetView(
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     mouthOpen: mouthOpen,
@@ -191,7 +209,7 @@ struct PetView: View {
                 )
             case .cat:
                 CatPetView(
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     mouthOpen: mouthOpen,
@@ -202,7 +220,7 @@ struct PetView: View {
                 )
             case .shiba:
                 ShibaPetView(
-                    expression: expression,
+                    expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
                     mouthOpen: mouthOpen,
@@ -247,6 +265,20 @@ struct PetView: View {
             petID: appearanceSettings.selectedPetID,
             skinID: appearanceSettings.selectedSkinID,
             official: official
+        )
+    }
+
+    private func bundledVisualAsset(
+        for source: PetBaseVisualSource
+    ) -> PetImportedVisualAsset? {
+        guard case let .bundledAsset(name) = source,
+              let url = Bundle.main.url(forResource: name, withExtension: "png")
+        else { return nil }
+
+        return PetImportedVisualAsset(
+            kind: .stillImage,
+            imageURL: url,
+            frameURLs: []
         )
     }
 

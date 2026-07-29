@@ -765,6 +765,18 @@ struct PetCustomizationEditorView: View {
             Toggle(label(.bottomPet), isOn: bottomPetBinding)
                 .disabled(isBottomPetLocked)
 
+            if selectedState == .happy {
+                Toggle(label(.followMusic), isOn: musicReactionEnabledBinding)
+
+                if customizationStore.musicReactionSettings.isEnabled {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(label(.musicSwaying), isOn: musicSwayingBinding)
+                        Toggle(label(.musicNotes), isOn: musicNotesBinding)
+                    }
+                    .padding(.leading, 16)
+                }
+            }
+
             if selectedState == .normal {
                 Toggle(label(.gravity), isOn: gravityBinding)
             }
@@ -887,6 +899,22 @@ struct PetCustomizationEditorView: View {
                 gazeOffset: .zero,
                 customEyeAsset: customEyeAsset
             )
+        } else if let bundledAsset = bundledPreviewAsset(for: state.base) {
+            // Keep the editor on the same complete-image path as the desktop
+            // pet. This matters for official state art such as Yellow
+            // Xiaohuang's eating image, which must not be composited over the
+            // regular cat artwork in the preview.
+            ImportedPetVisualView(
+                asset: bundledAsset,
+                baseOffset: state.baseOffset,
+                animationPlaybackRate: animationPlaybackRate,
+                playsAnimation: playsAnimation,
+                configuration: state.eyes,
+                expression: expression,
+                isBlinking: false,
+                gazeOffset: .zero,
+                customEyeAsset: customEyeAsset
+            )
         } else if isOfficialTarget {
             builtInPreview(expression: expression, customEyeAsset: customEyeAsset)
         } else {
@@ -903,6 +931,20 @@ struct PetCustomizationEditorView: View {
                 showsMissingAssetIcon: false
             )
         }
+    }
+
+    private func bundledPreviewAsset(
+        for source: PetBaseVisualSource
+    ) -> PetImportedVisualAsset? {
+        guard case let .bundledAsset(name) = source,
+              let url = Bundle.main.url(forResource: name, withExtension: "png")
+        else { return nil }
+
+        return PetImportedVisualAsset(
+            kind: .stillImage,
+            imageURL: url,
+            frameURLs: []
+        )
     }
 
     @ViewBuilder
@@ -1146,6 +1188,24 @@ struct PetCustomizationEditorView: View {
             get: { currentStateConfiguration.eyes?.resolvedPupilScale ?? 1 },
             set: { value in
                 updateCurrentEyes { $0.pupilScale = value }
+            }
+        )
+    }
+
+    private var pupilSpacingBinding: Binding<Double> {
+        Binding(
+            get: { currentStateConfiguration.eyes?.resolvedPupilSpacing ?? 0 },
+            set: { value in
+                updateCurrentEyes { $0.pupilSpacing = value }
+            }
+        )
+    }
+
+    private var pupilGazeScaleBinding: Binding<Double> {
+        Binding(
+            get: { currentStateConfiguration.eyes?.resolvedPupilGazeScale ?? 1 },
+            set: { value in
+                updateCurrentEyes { $0.pupilGazeScale = value }
             }
         )
     }
@@ -1659,6 +1719,8 @@ struct PetCustomizationEditorView: View {
         VStack(alignment: .leading, spacing: 12) {
             sliderRow(label: .whiteSize, value: outerEyeScaleBinding, range: 0.5...2)
             sliderRow(label: .pupilSize, value: pupilScaleBinding, range: 0.5...2)
+            sliderRow(label: .pupilSpacing, value: pupilSpacingBinding, range: -3...3)
+            sliderRow(label: .pupilGazeScale, value: pupilGazeScaleBinding, range: 0...1)
             sliderRow(label: .spacing, value: eyeSpacingBinding, range: -10...30)
         }
         .font(.callout)
@@ -1839,6 +1901,46 @@ struct PetCustomizationEditorView: View {
         )
     }
 
+    private var musicReactionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { customizationStore.musicReactionSettings.isEnabled },
+            set: { updateMusicReaction(enabled: $0) }
+        )
+    }
+
+    private var musicSwayingBinding: Binding<Bool> {
+        Binding(
+            get: {
+                usesAppearanceMusicSwayingSetting
+                    ? currentMusicSwayingEnabled
+                    : customizationStore.musicReactionSettings.isSwayingEnabled
+            },
+            set: {
+                if usesAppearanceMusicSwayingSetting {
+                    updateCurrentMusicSwaying(enabled: $0)
+                } else {
+                    updateMusicSwaying(enabled: $0)
+                }
+            }
+        )
+    }
+
+    private var currentMusicSwayingEnabled: Bool {
+        draft.resolvedMusicSwayingEnabled
+    }
+
+    private var usesAppearanceMusicSwayingSetting: Bool {
+        guard let ids = editingOfficialIDs else { return false }
+        return ids.petID == PetCatalog.cat.id && ids.skinID == "cat.yellow"
+    }
+
+    private var musicNotesBinding: Binding<Bool> {
+        Binding(
+            get: { customizationStore.musicReactionSettings.areMusicNotesEnabled },
+            set: { updateMusicNotes(enabled: $0) }
+        )
+    }
+
     private var isBottomPetLocked: Bool {
         guard let ids = editingOfficialIDs else { return false }
         return ids.petID == PetCatalog.cat.id && ids.skinID == "cat.yellow"
@@ -1868,6 +1970,46 @@ struct PetCustomizationEditorView: View {
         }
         draft = updatedDraft
         statusMessage = nil
+    }
+
+    private func updateMusicReaction(enabled: Bool) {
+        do {
+            try customizationStore.setMusicReactionEnabled(enabled)
+            statusMessage = nil
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func updateMusicSwaying(enabled: Bool) {
+        do {
+            try customizationStore.setMusicSwayingEnabled(enabled)
+            statusMessage = nil
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func updateCurrentMusicSwaying(enabled: Bool) {
+        let previousDraft = draft
+        var updatedDraft = previousDraft
+        updatedDraft.setMusicSwayingEnabled(enabled)
+        guard updatedDraft != previousDraft else { return }
+
+        if historyTransactionBaseline == nil {
+            recordUndoCheckpoint(previousDraft)
+        }
+        draft = updatedDraft
+        statusMessage = nil
+    }
+
+    private func updateMusicNotes(enabled: Bool) {
+        do {
+            try customizationStore.setMusicNotesEnabled(enabled)
+            statusMessage = nil
+        } catch {
+            statusMessage = error.localizedDescription
+        }
     }
 
     private var sleepingBreathBinding: Binding<Bool> {
@@ -2017,6 +2159,9 @@ struct PetCustomizationEditorView: View {
                 officialConfiguration.configuration(for: selectedState),
                 for: selectedState
             )
+            if usesAppearanceMusicSwayingSetting {
+                restoredDraft.restoreMusicSwayingEnabled(from: officialConfiguration)
+            }
             try customizationStore.saveVisualOverride(
                 restoredDraft,
                 petID: ids.petID,

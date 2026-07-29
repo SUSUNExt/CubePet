@@ -135,7 +135,11 @@ private struct FrogEyePairView: View {
 
     private var effectiveGaze: CGSize {
         guard configuration.followsMouse(for: expression) else { return .zero }
-        return CGSize(width: gazeOffset.width * 0.42, height: gazeOffset.height * 0.42)
+        let scale = CGFloat(configuration.resolvedPupilGazeScale)
+        return CGSize(
+            width: gazeOffset.width * 0.42 * scale,
+            height: gazeOffset.height * 0.42 * scale
+        )
     }
 
     private func frogEye(style: EyeStyle) -> some View {

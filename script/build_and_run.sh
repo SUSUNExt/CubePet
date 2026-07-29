@@ -5,7 +5,7 @@ MODE="${1:-run}"
 APP_NAME="MacBookPet"
 DISPLAY_NAME="CubePet"
 BUNDLE_ID="com.susunext.MacBookPet"
-APP_VERSION="0.9.9"
+APP_VERSION="0.9.95"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -44,8 +44,11 @@ CAT_YELLOW_IMAGE="$ROOT_DIR/Assets/CatPetYellowFaceless.png"
 CAT_YELLOW_HAPPY_IMAGE="$ROOT_DIR/Assets/CatPetYellowHappy.png"
 CAT_YELLOW_SCARED_IMAGE="$ROOT_DIR/Assets/CatPetYellowScared.png"
 CAT_YELLOW_SLEEPING_IMAGE="$ROOT_DIR/Assets/CatPetYellowSleeping.png"
-CAT_YELLOW_EATING_IMAGE="$ROOT_DIR/Assets/CatPetYellowEating.png"
+CAT_YELLOW_EATING_IMAGE="$ROOT_DIR/Assets/CatPetYellowEatingOfficial689cdacb.png"
 CAT_YELLOW_HUNGRY_IMAGE="$ROOT_DIR/Assets/CatPetYellowHungry.png"
+NETEASE_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/NetEaseMusicPermissionIcon.png"
+QQ_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/QQMusicPermissionIcon.png"
+KUGOU_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/KuGouMusicPermissionIcon.png"
 SHIBA_WATERCOLOR_EYE_OPEN_IMAGE="$ROOT_DIR/Assets/ShibaInuWatercolorEyeOpen.png"
 SHIBA_WATERCOLOR_EYE_CLOSED_IMAGE="$ROOT_DIR/Assets/ShibaInuWatercolorEyeClosed.png"
 SHIBA_PET_IMAGE="$ROOT_DIR/Assets/ShibaPet.png"
@@ -54,6 +57,12 @@ SHIBA_PET_SCARED_IMAGE="$ROOT_DIR/Assets/ShibaPetScaredApproved.png"
 SHIBA_PET_EATING_IMAGE="$ROOT_DIR/Assets/ShibaPetEating.png"
 SHIBA_PET_HUNGRY_IMAGE="$ROOT_DIR/Assets/ShibaPetHungry.png"
 SHIBA_PET_SLEEPING_IMAGE="$ROOT_DIR/Assets/ShibaPetSleeping.png"
+BEAGLE_PET_NORMAL_IMAGE="$ROOT_DIR/Assets/BeaglePetNormal.png"
+BEAGLE_PET_HAPPY_IMAGE="$ROOT_DIR/Assets/BeaglePetHappy.png"
+BEAGLE_PET_SCARED_IMAGE="$ROOT_DIR/Assets/BeaglePetScared.png"
+BEAGLE_PET_EATING_IMAGE="$ROOT_DIR/Assets/BeaglePetEating.png"
+BEAGLE_PET_HUNGRY_IMAGE="$ROOT_DIR/Assets/BeaglePetHungry.png"
+BEAGLE_PET_SLEEPING_IMAGE="$ROOT_DIR/Assets/BeaglePetSleeping.png"
 
 BUILD_CONFIGURATION="debug"
 if [[ "$MODE" == "--release-app" || "$MODE" == "release-app" ]]; then
@@ -116,8 +125,11 @@ cp "$CAT_YELLOW_IMAGE" "$APP_RESOURCES/CatPetYellowFaceless.png"
 cp "$CAT_YELLOW_HAPPY_IMAGE" "$APP_RESOURCES/CatPetYellowHappy.png"
 cp "$CAT_YELLOW_SCARED_IMAGE" "$APP_RESOURCES/CatPetYellowScared.png"
 cp "$CAT_YELLOW_SLEEPING_IMAGE" "$APP_RESOURCES/CatPetYellowSleeping.png"
-cp "$CAT_YELLOW_EATING_IMAGE" "$APP_RESOURCES/CatPetYellowEating.png"
+cp "$CAT_YELLOW_EATING_IMAGE" "$APP_RESOURCES/CatPetYellowEatingOfficial689cdacb.png"
 cp "$CAT_YELLOW_HUNGRY_IMAGE" "$APP_RESOURCES/CatPetYellowHungry.png"
+cp "$NETEASE_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/NetEaseMusicPermissionIcon.png"
+cp "$QQ_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/QQMusicPermissionIcon.png"
+cp "$KUGOU_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/KuGouMusicPermissionIcon.png"
 cp "$SHIBA_WATERCOLOR_EYE_OPEN_IMAGE" "$APP_RESOURCES/ShibaInuWatercolorEyeOpen.png"
 cp "$SHIBA_WATERCOLOR_EYE_CLOSED_IMAGE" "$APP_RESOURCES/ShibaInuWatercolorEyeClosed.png"
 cp "$SHIBA_PET_IMAGE" "$APP_RESOURCES/ShibaPet.png"
@@ -126,6 +138,12 @@ cp "$SHIBA_PET_SCARED_IMAGE" "$APP_RESOURCES/ShibaPetScaredApproved.png"
 cp "$SHIBA_PET_EATING_IMAGE" "$APP_RESOURCES/ShibaPetEating.png"
 cp "$SHIBA_PET_HUNGRY_IMAGE" "$APP_RESOURCES/ShibaPetHungry.png"
 cp "$SHIBA_PET_SLEEPING_IMAGE" "$APP_RESOURCES/ShibaPetSleeping.png"
+cp "$BEAGLE_PET_NORMAL_IMAGE" "$APP_RESOURCES/BeaglePetNormal.png"
+cp "$BEAGLE_PET_HAPPY_IMAGE" "$APP_RESOURCES/BeaglePetHappy.png"
+cp "$BEAGLE_PET_SCARED_IMAGE" "$APP_RESOURCES/BeaglePetScared.png"
+cp "$BEAGLE_PET_EATING_IMAGE" "$APP_RESOURCES/BeaglePetEating.png"
+cp "$BEAGLE_PET_HUNGRY_IMAGE" "$APP_RESOURCES/BeaglePetHungry.png"
+cp "$BEAGLE_PET_SLEEPING_IMAGE" "$APP_RESOURCES/BeaglePetSleeping.png"
 chmod +x "$APP_BINARY"
 
 cat >"$INFO_PLIST" <<PLIST
@@ -154,7 +172,7 @@ cat >"$INFO_PLIST" <<PLIST
   <key>NSInputMonitoringUsageDescription</key>
   <string>MacBookPet uses input monitoring to release the desktop pet immediately when you stop dragging it.</string>
   <key>NSAppleEventsUsageDescription</key>
-  <string>MacBookPet checks whether Music is playing so the pet can react to your music.</string>
+  <string>MacBookPet checks whether Music, NetEase Music, QQ Music, or KuGou Music is playing so the pet can react to your music.</string>
   <key>UTExportedTypeDeclarations</key>
   <array>
     <dict>

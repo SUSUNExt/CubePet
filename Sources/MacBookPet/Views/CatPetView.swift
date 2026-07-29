@@ -27,7 +27,9 @@ enum CatPetAsset {
     static let yellowHappyImage = load(named: "CatPetYellowHappy")
     static let yellowScaredImage = load(named: "CatPetYellowScared")
     static let yellowSleepingImage = load(named: "CatPetYellowSleeping")
-    static let yellowEatingImage = load(named: "CatPetYellowEating")
+    // This is the user-approved imported eating artwork, promoted to the
+    // official Yellow Xiaohuang default.
+    static let yellowEatingImage = load(named: "CatPetYellowEatingOfficial689cdacb")
     static let yellowHungryImage = load(named: "CatPetYellowHungry")
 
     private static func load(named name: String) -> NSImage? {
@@ -330,9 +332,9 @@ private struct CatEyePairView: View {
             configuration: configuration,
             additionalOffset: CGSize(width: 0, height: additionalOffsetY)
         ) {
-            catEye(style: eyeStyles.left)
+            catEye(style: eyeStyles.left, isLeft: true)
         } rightEye: {
-            catEye(style: eyeStyles.right)
+            catEye(style: eyeStyles.right, isLeft: false)
         }
     }
 
@@ -351,10 +353,14 @@ private struct CatEyePairView: View {
 
     private var effectiveGaze: CGSize {
         guard configuration.followsMouse(for: expression) else { return .zero }
-        return CGSize(width: gazeOffset.width * 0.44, height: gazeOffset.height * 0.44)
+        let scale = CGFloat(configuration.resolvedPupilGazeScale)
+        return CGSize(
+            width: gazeOffset.width * 0.44 * scale,
+            height: gazeOffset.height * 0.44 * scale
+        )
     }
 
-    private func catEye(style: EyeStyle) -> some View {
+    private func catEye(style: EyeStyle, isLeft: Bool) -> some View {
         ZStack {
             if showsEyeWhites {
                 Circle()
@@ -369,10 +375,19 @@ private struct CatEyePairView: View {
                 ink: eyeInk
             )
             .scaleEffect(eyeMarkScale)
-            .offset(effectiveGaze)
+            .offset(
+                x: effectiveGaze.width + pupilOffsetX(isLeft: isLeft),
+                y: effectiveGaze.height
+            )
             .animation(.easeOut(duration: 0.10), value: gazeOffset)
         }
         .frame(width: 14, height: 14)
+    }
+
+    private func pupilOffsetX(isLeft: Bool) -> CGFloat {
+        guard showsEyeWhites, !effectiveBlinking else { return 0 }
+        let spacing = CGFloat(configuration.resolvedPupilSpacing)
+        return isLeft ? -spacing : spacing
     }
 
     private func usesEyeWhites(for style: EyeStyle) -> Bool {

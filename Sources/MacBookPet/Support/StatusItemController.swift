@@ -44,6 +44,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         action: #selector(showShortcutSettings),
         keyEquivalent: ""
     )
+    private let permissionSettingsItem = NSMenuItem(
+        title: "",
+        action: #selector(showPermissionSettings),
+        keyEquivalent: ""
+    )
     private let menuAppearanceItem = NSMenuItem()
     private let menuFontItem = NSMenuItem()
     private let launchAtLoginItem = NSMenuItem(
@@ -74,6 +79,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let onShowAbout: () -> Void
     private let onShowPetCustomization: () -> Void
     private let onShowShortcutSettings: () -> Void
+    private let onShowPermissionSettings: () -> Void
     private let onQuit: () -> Void
     private var showsSystemInfo: Bool
     private var languageMenuItems: [AppLanguage: NSMenuItem] = [:]
@@ -107,6 +113,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         onShowAbout: @escaping () -> Void,
         onShowPetCustomization: @escaping () -> Void,
         onShowShortcutSettings: @escaping () -> Void,
+        onShowPermissionSettings: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
         self.feedSettings = feedSettings
@@ -125,6 +132,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.onShowAbout = onShowAbout
         self.onShowPetCustomization = onShowPetCustomization
         self.onShowShortcutSettings = onShowShortcutSettings
+        self.onShowPermissionSettings = onShowPermissionSettings
         self.onQuit = onQuit
         self.showsSystemInfo = UserDefaults.standard.object(forKey: Self.showsSystemInfoKey) as? Bool ?? true
         super.init()
@@ -407,6 +415,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func showShortcutSettings() {
         onShowShortcutSettings()
+    }
+
+    @objc private func showPermissionSettings() {
+        onShowPermissionSettings()
     }
 
     @objc private func selectMenuStyle(_ sender: NSMenuItem) {
@@ -794,6 +806,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         shortcutSettingsItem.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: nil)
         menu.addItem(shortcutSettingsItem)
 
+        permissionSettingsItem.target = self
+        permissionSettingsItem.image = NSImage(systemSymbolName: "lock.shield", accessibilityDescription: nil)
+        menu.addItem(permissionSettingsItem)
+
         launchAtLoginItem.target = self
         launchAtLoginItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         menu.addItem(launchAtLoginItem)
@@ -1027,6 +1043,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         languageItem.title = languageSettings.text(.language)
         showSystemInfoItem.title = languageSettings.text(.showSystemInfo)
         updateShortcutSettingsMenuState()
+        permissionSettingsItem.title = languageSettings.permissionSettingsText(.title)
         updateLaunchAtLoginMenuState()
         updateMetricsMenuState()
         updateProgressTitle()

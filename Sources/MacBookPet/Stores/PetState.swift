@@ -14,9 +14,9 @@ final class PetState: ObservableObject {
     private var expressionResetTask: Task<Void, Never>?
     private var landingRecoveryTask: Task<Void, Never>?
     private var idleTask: Task<Void, Never>?
-    private var musicActivationTask: Task<Void, Never>?
     private var isMusicPlaying = false
     private var isMusicReactionActive = false
+    private var musicReactionSettings = MusicReactionSettings()
 
     func start() {
         blinkTask?.cancel()
@@ -95,9 +95,17 @@ final class PetState: ObservableObject {
         guard isMusicPlaying != isPlaying else { return }
 
         isMusicPlaying = isPlaying
-        musicActivationTask?.cancel()
+        updateMusicReaction()
+    }
 
-        guard isPlaying else {
+    func setMusicReactionSettings(_ settings: MusicReactionSettings) {
+        guard musicReactionSettings != settings else { return }
+        musicReactionSettings = settings
+        updateMusicReaction()
+    }
+
+    private func updateMusicReaction() {
+        guard isMusicPlaying, musicReactionSettings.isEnabled else {
             isMusicReactionActive = false
             if expression == .listening {
                 withAnimation(.easeInOut(duration: 0.28)) {
@@ -108,22 +116,13 @@ final class PetState: ObservableObject {
             return
         }
 
-        musicActivationTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard !Task.isCancelled else { return }
+        isMusicReactionActive = true
+        idleTask?.cancel()
+        guard expression != .scared else { return }
 
-            await MainActor.run {
-                guard let self, self.isMusicPlaying else { return }
-
-                self.isMusicReactionActive = true
-                self.idleTask?.cancel()
-                guard self.expression != .scared else { return }
-
-                withAnimation(.easeInOut(duration: 0.32)) {
-                    self.expression = .listening
-                    self.isBlinking = false
-                }
-            }
+        withAnimation(.easeInOut(duration: 0.32)) {
+            expression = .listening
+            isBlinking = false
         }
     }
 
@@ -167,6 +166,5 @@ final class PetState: ObservableObject {
         expressionResetTask?.cancel()
         landingRecoveryTask?.cancel()
         idleTask?.cancel()
-        musicActivationTask?.cancel()
     }
 }

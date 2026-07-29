@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDelegate {
@@ -7,10 +8,12 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
     private var petMotionState: PetMotionState?
     private var physicsController: PetPhysicsController?
     private var musicPlaybackMonitor: MusicPlaybackMonitor?
+    private var musicReactionSettingsCancellable: AnyCancellable?
     private var activeSharingService: NSSharingService?
     private var aboutWindowController: AboutWindowController?
     private var petCustomizationWindowController: PetCustomizationWindowController?
     private var shortcutSettingsWindowController: ShortcutSettingsWindowController?
+    private var permissionSettingsWindowController: PermissionSettingsWindowController?
     private var statusItemController: StatusItemController?
     private var globalShortcutController: GlobalShortcutController?
     private var ageStore: PetAgeStore?
@@ -165,6 +168,10 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
         musicPlaybackMonitor.onPlaybackChanged = { [weak petState] isPlaying in
             petState?.setMusicPlaying(isPlaying)
         }
+        musicReactionSettingsCancellable = customizationStore.$musicReactionSettings
+            .sink { [weak petState] settings in
+                petState?.setMusicReactionSettings(settings)
+            }
         self.musicPlaybackMonitor = musicPlaybackMonitor
         musicPlaybackMonitor.start()
 
@@ -178,6 +185,10 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
         )
         self.petCustomizationWindowController = petCustomizationWindowController
         let updateAvailability = AppUpdateAvailability()
+        let permissionSettingsWindowController = PermissionSettingsWindowController(
+            languageSettings: languageSettings
+        )
+        self.permissionSettingsWindowController = permissionSettingsWindowController
         let statusItemController = StatusItemController(
             feedSettings: feedSettings,
             languageSettings: languageSettings,
@@ -200,6 +211,9 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             },
             onShowShortcutSettings: { [weak self] in
                 self?.shortcutSettingsWindowController?.show()
+            },
+            onShowPermissionSettings: { [weak permissionSettingsWindowController] in
+                permissionSettingsWindowController?.show()
             },
             onQuit: { NSApp.terminate(nil) }
         )
@@ -237,6 +251,7 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
     @MainActor
     func applicationWillTerminate(_ notification: Notification) {
         musicPlaybackMonitor?.stop()
+        musicReactionSettingsCancellable?.cancel()
         ageStore?.stopAndPersist()
         if let ageStore {
             progressStore?.synchronizeRuntime(ageStore.totalRuntime)

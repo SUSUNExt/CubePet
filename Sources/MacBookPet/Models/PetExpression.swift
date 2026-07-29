@@ -10,6 +10,12 @@ enum PetExpression: CaseIterable {
     case listening
     case hungry
 
+    /// Listening adds motion and music notes, while the pet itself keeps its
+    /// happy facial expression.
+    var visualRenderingExpression: PetExpression {
+        self == .listening ? .happy : self
+    }
+
     var leftEye: EyeStyle {
         switch self {
         case .calm:
