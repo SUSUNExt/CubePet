@@ -133,8 +133,8 @@ private struct MusicAppPermissionRow: View {
 
     @ViewBuilder
     private var musicAppIcon: some View {
-        if let url = Bundle.main.url(forResource: iconResourceName, withExtension: "png"),
-           let icon = NSImage(contentsOf: url)
+        if let url = PetResourceURLCache.url(named: iconResourceName, withExtension: "png"),
+           let icon = PetImportedImageCache.image(for: url)
         {
             Image(nsImage: icon)
                 .resizable()

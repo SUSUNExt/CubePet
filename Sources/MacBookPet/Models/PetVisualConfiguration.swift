@@ -49,19 +49,33 @@ enum PetEyeModuleKind: String, CaseIterable, Codable {
     /// The white sclera and pupil pair used by the default cat appearance.
     case catDefault
     case tracking
+    /// The small block-eye shape, kept identical to `tracking` but rendered black.
+    case trackingBlack
     /// A hand-drawn shiba inu eye pair with a dedicated closed-eye blink frame.
     case shibaWatercolor
+    /// A small dark chocolate-bean eye extracted from the Little Cookie pet.
+    case cookieBlackBean
     case happy
     case scared
     case sleeping
     case eating
     case hungry
+
+    var supportsEyeColorSelection: Bool {
+        switch self {
+        case .tracking, .happy, .scared, .sleeping:
+            true
+        default:
+            false
+        }
+    }
 }
 
 enum PetEyeColorMode: String, CaseIterable, Codable {
     case automatic
     case black
     case white
+    case brown
 }
 
 struct NormalizedVisualPoint: Equatable, Codable {
@@ -130,6 +144,23 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
         colorMode ?? .automatic
     }
 
+    /// Resolves the selected color for the editor. Legacy layouts use
+    /// `automatic`, whose visible default is supplied by the current pet skin.
+    func colorSelectionMode(
+        automaticColor: PetEyeColorMode
+    ) -> PetEyeColorMode {
+        switch resolvedColorMode {
+        case .automatic:
+            automaticColor
+        case .black:
+            .black
+        case .white:
+            .white
+        case .brown:
+            .brown
+        }
+    }
+
     var resolvedOuterEyeScale: Double {
         outerEyeScale ?? 1
     }
@@ -168,7 +199,11 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
             return (.round, .round)
         case .tracking:
             return (.round, .round)
+        case .trackingBlack:
+            return (.round, .round)
         case .shibaWatercolor:
+            return (.round, .round)
+        case .cookieBlackBean:
             return (.round, .round)
         case .happy:
             return (.smile, .smile)
@@ -191,18 +226,44 @@ struct PetEyeModuleConfiguration: Equatable, Codable {
             return true
         case .tracking:
             return true
-        case .shibaWatercolor, .happy, .scared, .sleeping, .eating, .hungry:
+        case .trackingBlack:
+            return true
+        case .shibaWatercolor:
             return false
+        case .happy, .scared, .sleeping, .eating, .hungry:
+            return false
+        case .cookieBlackBean:
+            return true
         }
     }
 
     var allowsBlinking: Bool {
         switch kind {
-        case .expressionDriven, .catDefault, .tracking, .shibaWatercolor:
+        case .expressionDriven, .catDefault, .tracking, .trackingBlack, .shibaWatercolor, .cookieBlackBean:
             return true
         case .happy, .scared, .sleeping, .eating, .hungry:
             return false
         }
+    }
+
+    /// This official type must remain black even if an older saved color setting exists.
+    var usesFixedBlackColor: Bool {
+        kind == .trackingBlack
+    }
+
+    /// These eye styles are a single visible layer rather than a white sclera
+    /// with a separate pupil, so they share the compact single-color controls.
+    var usesSingleColorEyeControls: Bool {
+        switch kind {
+        case .tracking, .trackingBlack, .cookieBlackBean, .happy, .scared, .sleeping:
+            true
+        default:
+            false
+        }
+    }
+
+    var supportsEyeColorSelection: Bool {
+        kind.supportsEyeColorSelection
     }
 }
 
@@ -355,6 +416,48 @@ struct PetVisualConfiguration: Equatable, Codable {
         return result
     }
 
+    /// Removes controls that had no effect on the single-layer black-bean eye.
+    /// The old movement value was never rendered, so start it at the previous
+    /// full-follow behavior rather than preserving an arbitrary slider value.
+    mutating func resetLegacyCookieBlackBeanEyeControls() -> Bool {
+        var didReset = false
+
+        for state in PetVisualState.allCases {
+            guard var stateConfiguration = states[state],
+                  var eyes = stateConfiguration.eyes,
+                  eyes.kind == .cookieBlackBean
+            else { continue }
+
+            eyes.outerEyeScale = nil
+            eyes.pupilSpacing = nil
+            eyes.pupilGazeScale = 1
+            stateConfiguration.eyes = eyes
+            states[state] = stateConfiguration
+            didReset = true
+        }
+
+        return didReset
+    }
+
+    mutating func replaceLegacyTrackingBlackEyes() -> Bool {
+        var didReplace = false
+
+        for state in PetVisualState.allCases {
+            guard var stateConfiguration = states[state],
+                  var eyes = stateConfiguration.eyes,
+                  eyes.kind == .trackingBlack
+            else { continue }
+
+            eyes.kind = .tracking
+            eyes.colorMode = .black
+            stateConfiguration.eyes = eyes
+            states[state] = stateConfiguration
+            didReplace = true
+        }
+
+        return didReplace
+    }
+
     private static let fallbackState = PetStateVisualConfiguration(
         base: .officialSkin,
         eyes: nil
@@ -370,6 +473,8 @@ enum PetVisualDefaults {
             return cat(skinID: skinID)
         case PetCatalog.dog.id:
             return dog(skinID: skinID)
+        case PetCatalog.cookie.id:
+            return cookie
         default:
             return cube
         }
@@ -413,68 +518,132 @@ enum PetVisualDefaults {
         )
     )
 
-    // Promoted from the approved custom-pet layout so Shiba Inu has the
-    // same complete expression artwork and placement on every fresh install.
+    static let cookie = PetVisualConfiguration(
+        states: [
+            .normal: cookieNormalState,
+            .happy: cookieFaceState(
+                eyes: PetEyeModuleConfiguration(
+                    kind: .happy,
+                    center: NormalizedVisualPoint(x: 0.5058791035353535, y: 0.41216303661616166),
+                    scale: 0.6333666424418604,
+                    spacing: 11.96278782894737,
+                    rightEyeOffsetY: -0.6,
+                    colorMode: .brown,
+                    pupilScale: 0.5,
+                    pupilGazeScale: 0.27377158717105265
+                )
+            ),
+            .scared: cookieFaceState(
+                eyes: PetEyeModuleConfiguration(
+                    kind: .scared,
+                    center: NormalizedVisualPoint(x: 0.5058791035353535, y: 0.41216303661616166),
+                    scale: 0.6333666424418604,
+                    spacing: 12.879607681888547,
+                    rightEyeOffsetY: -0.6,
+                    colorMode: .brown,
+                    pupilScale: 0.5,
+                    pupilGazeScale: 0.27377158717105265
+                )
+            ),
+            .sleeping: PetStateVisualConfiguration(
+                base: .bundledAsset(name: "CookiePetFaceless"),
+                eyes: PetEyeModuleConfiguration(
+                    kind: .sleeping,
+                    center: NormalizedVisualPoint(x: 0.5098248106060606, y: 0.3701270517676768),
+                    scale: 0.6694222383720931,
+                    spacing: 8.169117647058826,
+                    colorMode: .brown
+                ),
+                sleepingEffect: .bubbles
+            ),
+            .eating: cookieFaceState(
+                eyes: PetEyeModuleConfiguration(
+                    kind: .happy,
+                    center: NormalizedVisualPoint(x: 0.5058791035353535, y: 0.41216303661616166),
+                    scale: 0.6333666424418604,
+                    spacing: 12.879607681888547,
+                    rightEyeOffsetY: -0.6,
+                    colorMode: .brown,
+                    pupilScale: 0.5,
+                    pupilGazeScale: 0.27377158717105265
+                )
+            ),
+            .hungry: cookieFaceState(
+                eyes: PetEyeModuleConfiguration(
+                    kind: .happy,
+                    center: NormalizedVisualPoint(x: 0.5058791035353535, y: 0.41216303661616166),
+                    scale: 0.6333666424418604,
+                    spacing: 12.879607681888547,
+                    rightEyeOffsetY: -0.6,
+                    colorMode: .brown,
+                    pupilScale: 0.5,
+                    pupilGazeScale: 0.27377158717105265
+                )
+            )
+        ]
+    )
+
+    private static let cookieNormalState = PetStateVisualConfiguration(
+        base: .bundledAsset(name: "CookiePetFaceless"),
+        eyes: PetEyeModuleConfiguration(
+            kind: .cookieBlackBean,
+            center: NormalizedVisualPoint(x: 0.5, y: 0.44),
+            scale: 1.2,
+            spacing: -1.22080592105263,
+            rightEyeOffsetY: -0.6,
+            pupilScale: 0.5,
+            pupilGazeScale: 0.27377158717105265
+        )
+    )
+
+    private static func cookieFaceState(
+        eyes: PetEyeModuleConfiguration
+    ) -> PetStateVisualConfiguration {
+        PetStateVisualConfiguration(
+            base: .bundledAsset(name: "CookiePetFaceless"),
+            eyes: eyes
+        )
+    }
+
     static let shiba = PetVisualConfiguration(
         states: [
             .normal: PetStateVisualConfiguration(
-                base: .officialSkin,
+                base: .bundledAsset(name: "ShibaPet"),
                 eyes: PetEyeModuleConfiguration(
                     kind: .shibaWatercolor,
-                    center: NormalizedVisualPoint(
-                        x: 0.4963699494949495,
-                        y: 0.3116911300505051
-                    ),
+                    center: NormalizedVisualPoint(x: 0.4963699494949495, y: 0.3116911300505051),
                     scale: 0.5,
                     spacing: 3.676809210526315,
                     pupilScale: 0.5482884457236842
                 ),
-                baseOffset: NormalizedVisualOffset(
-                    x: 0.0012866436100131755,
-                    y: 0.015014273166447073
-                ),
+                baseOffset: NormalizedVisualOffset(x: 0.0012866436100131755, y: 0.015014273166447073),
                 baseScale: 1.15
             ),
             .happy: PetStateVisualConfiguration(
-                base: .officialSkin,
-                eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.015151515151515152),
-                baseScale: 1.15
+                base: .bundledAsset(name: "ShibaPetHappy"), eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.015151515151515152), baseScale: 1.15
             ),
             .scared: PetStateVisualConfiguration(
-                base: .officialSkin,
-                eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.030303030303030304),
-                baseScale: 1.15
+                base: .bundledAsset(name: "ShibaPetScaredApproved"), eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.030303030303030304), baseScale: 1.15
             ),
             .sleeping: PetStateVisualConfiguration(
-                base: .officialSkin,
-                eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.1515151515151515),
-                baseScale: 1.15
+                base: .bundledAsset(name: "ShibaPetSleeping"), eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.1515151515151515), baseScale: 1.15
             ),
             .eating: PetStateVisualConfiguration(
-                base: .officialSkin,
-                eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.015151515151515152),
-                baseScale: 1.15
+                base: .bundledAsset(name: "ShibaPetEating"), eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.015151515151515152), baseScale: 1.15
             ),
             .hungry: PetStateVisualConfiguration(
-                base: .officialSkin,
-                eyes: nil,
-                baseOffset: NormalizedVisualOffset(x: 0, y: 0.06060606060606061),
-                baseScale: 1.1
+                base: .bundledAsset(name: "ShibaPetHungry"), eyes: nil,
+                baseOffset: NormalizedVisualOffset(x: 0, y: 0.06060606060606061), baseScale: 1.1
             )
         ]
     )
 
     static func dog(skinID: String) -> PetVisualConfiguration {
-        switch skinID {
-        case "dog.beagle":
-            return beagle
-        default:
-            return shiba
-        }
+        skinID == "dog.beagle" ? beagle : shiba
     }
 
     // Promoted from the approved "垂耳小猎犬" custom pet. Every state is

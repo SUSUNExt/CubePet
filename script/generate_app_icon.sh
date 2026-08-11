@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASSETS_DIR="$ROOT_DIR/Assets"
 MASTER_PNG="$ASSETS_DIR/AppIcon.png"
+APP_SOURCE_PNG="$ASSETS_DIR/CubePetLogo.png"
+MENU_SOURCE_PNG="$ASSETS_DIR/CubePetLogo2.png"
+MENU_TEMPLATE_PNG="$ASSETS_DIR/CubePetStatusIcon.png"
 OUTPUT_ICNS="$ASSETS_DIR/MacBookPet.icns"
 TEMP_DIR="$(mktemp -d)"
 ICONSET_DIR="$TEMP_DIR/MacBookPet.iconset"
@@ -11,7 +14,11 @@ ICONSET_DIR="$TEMP_DIR/MacBookPet.iconset"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 mkdir -p "$ASSETS_DIR" "$ICONSET_DIR"
-swift "$ROOT_DIR/script/generate_app_icon.swift" "$MASTER_PNG"
+swift "$ROOT_DIR/script/generate_app_icon.swift" \
+  "$APP_SOURCE_PNG" \
+  "$MENU_SOURCE_PNG" \
+  "$MASTER_PNG" \
+  "$MENU_TEMPLATE_PNG"
 
 make_icon() {
   local pixels="$1"

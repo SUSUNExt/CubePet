@@ -1,15 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
+MODE="run"
+if [[ $# -gt 0 && "$1" != "--arch" ]]; then
+  MODE="$1"
+  shift
+fi
+
+ARCHITECTURE="${ARCHITECTURE:-$(uname -m)}"
+if [[ $# -gt 0 ]]; then
+  if [[ "$1" != "--arch" || $# -ne 2 ]]; then
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--release-app] [--arch arm64|x86_64]" >&2
+    exit 2
+  fi
+  ARCHITECTURE="$2"
+fi
+
+case "$ARCHITECTURE" in
+  arm64|x86_64)
+    ;;
+  *)
+    echo "unsupported architecture: $ARCHITECTURE (expected arm64 or x86_64)" >&2
+    exit 2
+    ;;
+esac
 APP_NAME="MacBookPet"
 DISPLAY_NAME="CubePet"
 BUNDLE_ID="com.susunext.MacBookPet"
-APP_VERSION="0.9.95"
+APP_VERSION="1.0.0"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="$ROOT_DIR/dist"
+DIST_DIR="$ROOT_DIR/dist/$ARCHITECTURE"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
@@ -17,6 +39,7 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 APP_ICON="$ROOT_DIR/Assets/MacBookPet.icns"
+STATUS_ICON="$ROOT_DIR/Assets/CubePetStatusIcon.png"
 FROG_PET_IMAGE="$ROOT_DIR/Assets/FrogPet.png"
 FROG_LARGE_MOUTH_IMAGE="$ROOT_DIR/Assets/FrogPetMouthLarge.png"
 CAT_PET_IMAGE="$ROOT_DIR/Assets/CatPetFaceless.png"
@@ -46,9 +69,6 @@ CAT_YELLOW_SCARED_IMAGE="$ROOT_DIR/Assets/CatPetYellowScared.png"
 CAT_YELLOW_SLEEPING_IMAGE="$ROOT_DIR/Assets/CatPetYellowSleeping.png"
 CAT_YELLOW_EATING_IMAGE="$ROOT_DIR/Assets/CatPetYellowEatingOfficial689cdacb.png"
 CAT_YELLOW_HUNGRY_IMAGE="$ROOT_DIR/Assets/CatPetYellowHungry.png"
-NETEASE_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/NetEaseMusicPermissionIcon.png"
-QQ_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/QQMusicPermissionIcon.png"
-KUGOU_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/KuGouMusicPermissionIcon.png"
 SHIBA_WATERCOLOR_EYE_OPEN_IMAGE="$ROOT_DIR/Assets/ShibaInuWatercolorEyeOpen.png"
 SHIBA_WATERCOLOR_EYE_CLOSED_IMAGE="$ROOT_DIR/Assets/ShibaInuWatercolorEyeClosed.png"
 SHIBA_PET_IMAGE="$ROOT_DIR/Assets/ShibaPet.png"
@@ -57,12 +77,47 @@ SHIBA_PET_SCARED_IMAGE="$ROOT_DIR/Assets/ShibaPetScaredApproved.png"
 SHIBA_PET_EATING_IMAGE="$ROOT_DIR/Assets/ShibaPetEating.png"
 SHIBA_PET_HUNGRY_IMAGE="$ROOT_DIR/Assets/ShibaPetHungry.png"
 SHIBA_PET_SLEEPING_IMAGE="$ROOT_DIR/Assets/ShibaPetSleeping.png"
+NETEASE_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/NetEaseMusicPermissionIcon.png"
+QQ_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/QQMusicPermissionIcon.png"
+KUGOU_MUSIC_PERMISSION_ICON="$ROOT_DIR/Assets/KuGouMusicPermissionIcon.png"
 BEAGLE_PET_NORMAL_IMAGE="$ROOT_DIR/Assets/BeaglePetNormal.png"
 BEAGLE_PET_HAPPY_IMAGE="$ROOT_DIR/Assets/BeaglePetHappy.png"
 BEAGLE_PET_SCARED_IMAGE="$ROOT_DIR/Assets/BeaglePetScared.png"
 BEAGLE_PET_EATING_IMAGE="$ROOT_DIR/Assets/BeaglePetEating.png"
 BEAGLE_PET_HUNGRY_IMAGE="$ROOT_DIR/Assets/BeaglePetHungry.png"
 BEAGLE_PET_SLEEPING_IMAGE="$ROOT_DIR/Assets/BeaglePetSleeping.png"
+COOKIE_PET_IMAGE="$ROOT_DIR/Assets/CookiePetFaceless.png"
+COOKIE_BLACK_BEAN_EYE_IMAGE="$ROOT_DIR/Assets/CookieBlackBeanEye.png"
+CUBE_SKIN_ICE2_IMAGE="$ROOT_DIR/Assets/CubeSkinIce2.png"
+CUBE_SKIN_RAINBOW2_IMAGE="$ROOT_DIR/Assets/CubeSkinRainbow2.png"
+PET_COLA_IMAGE="$ROOT_DIR/Assets/PetCola.png"
+FISH_SHAPED_PASTRY_IMAGE="$ROOT_DIR/Assets/FishShapedPastry.png"
+PUDDING_CUP_IMAGE="$ROOT_DIR/Assets/PuddingCup.png"
+THREE_COLOR_DANGO_IMAGE="$ROOT_DIR/Assets/ThreeColorDango.png"
+PET_MENU_BACKGROUND_IMAGE="$ROOT_DIR/Assets/PetMenuBackground.jpg"
+PET_MENU_HAND_DRAWN_BUTTON_IMAGE="$ROOT_DIR/Assets/PetMenuHandDrawnButton.png"
+PET_MENU_HAND_DRAWN_CARD_IMAGE="$ROOT_DIR/Assets/PetMenuHandDrawnCard.png"
+MY_PETS_COLLECTION_CARD_IMAGE="$ROOT_DIR/Assets/MyPetsCollectionCard.png"
+PET_NECK_SCARF_IMAGE="$ROOT_DIR/Assets/PetNeckScarf.png"
+PET_NECK_SCARF_MUSHROOM_IMAGE="$ROOT_DIR/Assets/PetNeckScarfMushroom.png"
+PET_NECK_SCARF_FLOWER_PLAID_IMAGE="$ROOT_DIR/Assets/PetNeckScarfFlowerPlaid.png"
+PET_NECK_SCARF_BLUE_STRIPE_IMAGE="$ROOT_DIR/Assets/PetNeckScarfBlueStripe.png"
+PET_NECK_SCARF_CREAM_FLOWER_IMAGE="$ROOT_DIR/Assets/PetNeckScarfCreamFlower.png"
+PET_NECK_SCARF_STAR_TASSEL_IMAGE="$ROOT_DIR/Assets/PetNeckScarfStarTassel.png"
+PET_NECK_SCARF_RED_STRIPE_IMAGE="$ROOT_DIR/Assets/PetNeckScarfRedStripe.png"
+PET_NECK_SCARF_RUST_KNIT_IMAGE="$ROOT_DIR/Assets/PetNeckScarfRustKnit.png"
+PET_NECK_SCARF_COLORFUL_POLKA_DOT_IMAGE="$ROOT_DIR/Assets/PetNeckScarfColorfulPolkaDot.png"
+PET_NECK_SCARF_KOI_WAVE_IMAGE="$ROOT_DIR/Assets/PetNeckScarfKoiWave.png"
+PET_NECK_SCARF_ROCK_LIGHTNING_IMAGE="$ROOT_DIR/Assets/PetNeckScarfRockLightning.png"
+PET_NECK_SCARF_LEMON_LACE_IMAGE="$ROOT_DIR/Assets/PetNeckScarfLemonLace.png"
+PET_NECK_SCARF_GALAXY_IMAGE="$ROOT_DIR/Assets/PetNeckScarfGalaxy.png"
+PET_NECK_SCARF_RAINBOW_POM_POM_IMAGE="$ROOT_DIR/Assets/PetNeckScarfRainbowPomPom.png"
+PET_NECK_SCARF_AUTUMN_PLAID_IMAGE="$ROOT_DIR/Assets/PetNeckScarfAutumnPlaid.png"
+PET_NECK_SCARF_ACORN_ARGYLE_IMAGE="$ROOT_DIR/Assets/PetNeckScarfAcornArgyle.png"
+PET_NECK_SCARF_STRAWBERRY_HEART_IMAGE="$ROOT_DIR/Assets/PetNeckScarfStrawberryHeart.png"
+PET_HEAD_PAW_BASEBALL_CAP_IMAGE="$ROOT_DIR/Assets/PetHeadPawBaseballCap.png"
+PET_HEAD_AVIATOR_CAP_IMAGE="$ROOT_DIR/Assets/PetHeadAviatorCap.png"
+PET_HEAD_LEAF_NEWSBOY_CAP_IMAGE="$ROOT_DIR/Assets/PetHeadLeafNewsboyCap.png"
 
 BUILD_CONFIGURATION="debug"
 if [[ "$MODE" == "--release-app" || "$MODE" == "release-app" ]]; then
@@ -91,13 +146,14 @@ if [[ "$MODE" != "--release-app" && "$MODE" != "release-app" ]]; then
   pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 fi
 
-swift build -c "$BUILD_CONFIGURATION"
-BUILD_BINARY="$(swift build -c "$BUILD_CONFIGURATION" --show-bin-path)/$APP_NAME"
+swift build -c "$BUILD_CONFIGURATION" --arch "$ARCHITECTURE"
+BUILD_BINARY="$(swift build -c "$BUILD_CONFIGURATION" --arch "$ARCHITECTURE" --show-bin-path)/$APP_NAME"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 cp "$APP_ICON" "$APP_RESOURCES/MacBookPet.icns"
+cp "$STATUS_ICON" "$APP_RESOURCES/CubePetStatusIcon.png"
 cp "$FROG_PET_IMAGE" "$APP_RESOURCES/FrogPet.png"
 cp "$FROG_LARGE_MOUTH_IMAGE" "$APP_RESOURCES/FrogPetMouthLarge.png"
 cp "$CAT_PET_IMAGE" "$APP_RESOURCES/CatPet.png"
@@ -127,9 +183,6 @@ cp "$CAT_YELLOW_SCARED_IMAGE" "$APP_RESOURCES/CatPetYellowScared.png"
 cp "$CAT_YELLOW_SLEEPING_IMAGE" "$APP_RESOURCES/CatPetYellowSleeping.png"
 cp "$CAT_YELLOW_EATING_IMAGE" "$APP_RESOURCES/CatPetYellowEatingOfficial689cdacb.png"
 cp "$CAT_YELLOW_HUNGRY_IMAGE" "$APP_RESOURCES/CatPetYellowHungry.png"
-cp "$NETEASE_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/NetEaseMusicPermissionIcon.png"
-cp "$QQ_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/QQMusicPermissionIcon.png"
-cp "$KUGOU_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/KuGouMusicPermissionIcon.png"
 cp "$SHIBA_WATERCOLOR_EYE_OPEN_IMAGE" "$APP_RESOURCES/ShibaInuWatercolorEyeOpen.png"
 cp "$SHIBA_WATERCOLOR_EYE_CLOSED_IMAGE" "$APP_RESOURCES/ShibaInuWatercolorEyeClosed.png"
 cp "$SHIBA_PET_IMAGE" "$APP_RESOURCES/ShibaPet.png"
@@ -138,12 +191,47 @@ cp "$SHIBA_PET_SCARED_IMAGE" "$APP_RESOURCES/ShibaPetScaredApproved.png"
 cp "$SHIBA_PET_EATING_IMAGE" "$APP_RESOURCES/ShibaPetEating.png"
 cp "$SHIBA_PET_HUNGRY_IMAGE" "$APP_RESOURCES/ShibaPetHungry.png"
 cp "$SHIBA_PET_SLEEPING_IMAGE" "$APP_RESOURCES/ShibaPetSleeping.png"
+cp "$NETEASE_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/NetEaseMusicPermissionIcon.png"
+cp "$QQ_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/QQMusicPermissionIcon.png"
+cp "$KUGOU_MUSIC_PERMISSION_ICON" "$APP_RESOURCES/KuGouMusicPermissionIcon.png"
 cp "$BEAGLE_PET_NORMAL_IMAGE" "$APP_RESOURCES/BeaglePetNormal.png"
 cp "$BEAGLE_PET_HAPPY_IMAGE" "$APP_RESOURCES/BeaglePetHappy.png"
 cp "$BEAGLE_PET_SCARED_IMAGE" "$APP_RESOURCES/BeaglePetScared.png"
 cp "$BEAGLE_PET_EATING_IMAGE" "$APP_RESOURCES/BeaglePetEating.png"
 cp "$BEAGLE_PET_HUNGRY_IMAGE" "$APP_RESOURCES/BeaglePetHungry.png"
 cp "$BEAGLE_PET_SLEEPING_IMAGE" "$APP_RESOURCES/BeaglePetSleeping.png"
+cp "$COOKIE_PET_IMAGE" "$APP_RESOURCES/CookiePetFaceless.png"
+cp "$COOKIE_BLACK_BEAN_EYE_IMAGE" "$APP_RESOURCES/CookieBlackBeanEye.png"
+cp "$CUBE_SKIN_ICE2_IMAGE" "$APP_RESOURCES/CubeSkinIce2.png"
+cp "$CUBE_SKIN_RAINBOW2_IMAGE" "$APP_RESOURCES/CubeSkinRainbow2.png"
+cp "$PET_COLA_IMAGE" "$APP_RESOURCES/PetCola.png"
+cp "$FISH_SHAPED_PASTRY_IMAGE" "$APP_RESOURCES/FishShapedPastry.png"
+cp "$PUDDING_CUP_IMAGE" "$APP_RESOURCES/PuddingCup.png"
+cp "$THREE_COLOR_DANGO_IMAGE" "$APP_RESOURCES/ThreeColorDango.png"
+cp "$PET_MENU_BACKGROUND_IMAGE" "$APP_RESOURCES/PetMenuBackground.jpg"
+cp "$PET_MENU_HAND_DRAWN_BUTTON_IMAGE" "$APP_RESOURCES/PetMenuHandDrawnButton.png"
+cp "$PET_MENU_HAND_DRAWN_CARD_IMAGE" "$APP_RESOURCES/PetMenuHandDrawnCard.png"
+cp "$MY_PETS_COLLECTION_CARD_IMAGE" "$APP_RESOURCES/MyPetsCollectionCard.png"
+cp "$PET_NECK_SCARF_IMAGE" "$APP_RESOURCES/PetNeckScarf.png"
+cp "$PET_NECK_SCARF_MUSHROOM_IMAGE" "$APP_RESOURCES/PetNeckScarfMushroom.png"
+cp "$PET_NECK_SCARF_FLOWER_PLAID_IMAGE" "$APP_RESOURCES/PetNeckScarfFlowerPlaid.png"
+cp "$PET_NECK_SCARF_BLUE_STRIPE_IMAGE" "$APP_RESOURCES/PetNeckScarfBlueStripe.png"
+cp "$PET_NECK_SCARF_CREAM_FLOWER_IMAGE" "$APP_RESOURCES/PetNeckScarfCreamFlower.png"
+cp "$PET_NECK_SCARF_STAR_TASSEL_IMAGE" "$APP_RESOURCES/PetNeckScarfStarTassel.png"
+cp "$PET_NECK_SCARF_RED_STRIPE_IMAGE" "$APP_RESOURCES/PetNeckScarfRedStripe.png"
+cp "$PET_NECK_SCARF_RUST_KNIT_IMAGE" "$APP_RESOURCES/PetNeckScarfRustKnit.png"
+cp "$PET_NECK_SCARF_COLORFUL_POLKA_DOT_IMAGE" "$APP_RESOURCES/PetNeckScarfColorfulPolkaDot.png"
+cp "$PET_NECK_SCARF_KOI_WAVE_IMAGE" "$APP_RESOURCES/PetNeckScarfKoiWave.png"
+cp "$PET_NECK_SCARF_ROCK_LIGHTNING_IMAGE" "$APP_RESOURCES/PetNeckScarfRockLightning.png"
+cp "$PET_NECK_SCARF_LEMON_LACE_IMAGE" "$APP_RESOURCES/PetNeckScarfLemonLace.png"
+cp "$PET_NECK_SCARF_GALAXY_IMAGE" "$APP_RESOURCES/PetNeckScarfGalaxy.png"
+cp "$PET_NECK_SCARF_RAINBOW_POM_POM_IMAGE" "$APP_RESOURCES/PetNeckScarfRainbowPomPom.png"
+cp "$PET_NECK_SCARF_AUTUMN_PLAID_IMAGE" "$APP_RESOURCES/PetNeckScarfAutumnPlaid.png"
+cp "$PET_NECK_SCARF_ACORN_ARGYLE_IMAGE" "$APP_RESOURCES/PetNeckScarfAcornArgyle.png"
+cp "$PET_NECK_SCARF_STRAWBERRY_HEART_IMAGE" "$APP_RESOURCES/PetNeckScarfStrawberryHeart.png"
+cp "$PET_HEAD_PAW_BASEBALL_CAP_IMAGE" "$APP_RESOURCES/PetHeadPawBaseballCap.png"
+cp "$PET_HEAD_AVIATOR_CAP_IMAGE" "$APP_RESOURCES/PetHeadAviatorCap.png"
+cp "$PET_HEAD_LEAF_NEWSBOY_CAP_IMAGE" "$APP_RESOURCES/PetHeadLeafNewsboyCap.png"
 chmod +x "$APP_BINARY"
 
 cat >"$INFO_PLIST" <<PLIST
@@ -229,7 +317,7 @@ case "$MODE" in
     echo "$APP_BUNDLE"
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--release-app]" >&2
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--release-app] [--arch arm64|x86_64]" >&2
     exit 2
     ;;
 esac

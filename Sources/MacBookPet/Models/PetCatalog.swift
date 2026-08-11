@@ -6,6 +6,10 @@ enum PetSkinName {
     case green
     case red
     case pink
+    case ice
+    case rainbow
+    case ice2
+    case rainbow2
     case frogClassic
     case catClassic
     case catGrayTabby
@@ -15,6 +19,7 @@ enum PetSkinName {
     case catYellow
     case shibaClassic
     case beagle
+    case cookieClassic
 }
 
 enum PetName {
@@ -22,13 +27,38 @@ enum PetName {
     case frog
     case cat
     case dog
+    case cookie
 }
 
 enum PetVisualKind {
     case cube
     case frog
     case cat
-    case shiba
+    case dog
+    case cookie
+}
+
+enum CubeSkinStyle: Equatable {
+    case solid
+    case ice
+    case rainbow
+    case ice2
+    case rainbow2
+
+    init(skinID: String) {
+        switch skinID {
+        case "cube.ice":
+            self = .ice
+        case "cube.rainbow":
+            self = .rainbow
+        case "cube.ice2":
+            self = .ice2
+        case "cube.rainbow2":
+            self = .rainbow2
+        default:
+            self = .solid
+        }
+    }
 }
 
 struct PetSkinDefinition: Identifiable {
@@ -96,6 +126,34 @@ enum PetCatalog {
                 color: NSColor(srgbRed: 0.96, green: 0.38, blue: 0.66, alpha: 1),
                 unlockLevel: 8,
                 price: 300
+            ),
+            PetSkinDefinition(
+                id: "cube.ice",
+                name: .ice,
+                color: NSColor(srgbRed: 0.62, green: 0.88, blue: 0.98, alpha: 1),
+                unlockLevel: 1,
+                price: 0
+            ),
+            PetSkinDefinition(
+                id: "cube.rainbow",
+                name: .rainbow,
+                color: NSColor(srgbRed: 0.78, green: 0.34, blue: 0.92, alpha: 1),
+                unlockLevel: 1,
+                price: 0
+            ),
+            PetSkinDefinition(
+                id: "cube.ice2",
+                name: .ice2,
+                color: NSColor(srgbRed: 0.31, green: 0.66, blue: 0.80, alpha: 1),
+                unlockLevel: 1,
+                price: 0
+            ),
+            PetSkinDefinition(
+                id: "cube.rainbow2",
+                name: .rainbow2,
+                color: NSColor(srgbRed: 0.76, green: 0.19, blue: 0.32, alpha: 1),
+                unlockLevel: 1,
+                price: 0
             )
         ]
     )
@@ -170,7 +228,7 @@ enum PetCatalog {
     static let dog = PetDefinition(
         id: "dog",
         name: .dog,
-        visualKind: .shiba,
+        visualKind: .dog,
         price: 0,
         skins: [
             PetSkinDefinition(
@@ -190,7 +248,23 @@ enum PetCatalog {
         ]
     )
 
-    static let pets = [cube, frog, cat, dog]
+    static let cookie = PetDefinition(
+        id: "cookie",
+        name: .cookie,
+        visualKind: .cookie,
+        price: 0,
+        skins: [
+            PetSkinDefinition(
+                id: "cookie.classic",
+                name: .cookieClassic,
+                color: NSColor(srgbRed: 0.89, green: 0.58, blue: 0.29, alpha: 1),
+                unlockLevel: 1,
+                price: 0
+            )
+        ]
+    )
+
+    static let pets = [cube, frog, cat, dog, cookie]
 
     static func pet(id: String) -> PetDefinition? {
         pets.first { $0.id == id }

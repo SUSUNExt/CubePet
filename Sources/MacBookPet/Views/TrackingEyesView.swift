@@ -8,6 +8,7 @@ struct TrackingEyesView: View {
     let gazeOffset: CGSize
     var additionalOffset: CGSize = .zero
     var customEyeAsset: PetImportedVisualAsset? = nil
+    var imagePurpose: PetImagePurpose = .fullResolution
 
     var body: some View {
         Group {
@@ -15,13 +16,27 @@ struct TrackingEyesView: View {
                 CustomEyePairView(
                     asset: customEyeAsset,
                     configuration: configuration,
-                    additionalOffset: additionalOffset
+                    additionalOffset: CGSize(
+                        width: effectiveGaze.width + additionalOffset.width,
+                        height: effectiveGaze.height + additionalOffset.height
+                    ),
+                    imagePurpose: imagePurpose
                 )
             } else if configuration.kind == .shibaWatercolor {
                 ShibaWatercolorEyePairView(
                     configuration: configuration,
                     isBlinking: effectiveBlinking,
-                    additionalOffset: additionalOffset
+                    additionalOffset: additionalOffset,
+                    imagePurpose: imagePurpose
+                )
+            } else if configuration.kind == .cookieBlackBean {
+                CookieBlackBeanEyePairView(
+                    configuration: configuration,
+                    additionalOffset: CGSize(
+                        width: effectivePupilGaze.width + additionalOffset.width,
+                        height: effectivePupilGaze.height + additionalOffset.height
+                    ),
+                    imagePurpose: imagePurpose
                 )
             } else if configuration.kind == .catDefault {
                 DefaultCatEyePairView(
@@ -31,11 +46,14 @@ struct TrackingEyesView: View {
                     additionalOffset: additionalOffset
                 )
             } else {
+                let gaze = configuration.usesSingleColorEyeControls
+                    ? effectivePupilGaze
+                    : effectiveGaze
                 EyePairLayout(
                     configuration: configuration,
                     additionalOffset: CGSize(
-                        width: effectiveGaze.width + additionalOffset.width,
-                        height: effectiveGaze.height + additionalOffset.height
+                        width: gaze.width + additionalOffset.width,
+                        height: gaze.height + additionalOffset.height
                     )
                 ) {
                     EyeView(
@@ -75,32 +93,41 @@ struct TrackingEyesView: View {
     }
 
     private var eyeColor: Color {
-        switch configuration.resolvedColorMode {
+        if configuration.usesFixedBlackColor {
+            return .black
+        }
+
+        return switch configuration.resolvedColorMode {
         case .automatic, .white: .white
         case .black: .black
+        case .brown: Color(red: 112.0 / 255.0, green: 68.0 / 255.0, blue: 41.0 / 255.0)
         }
     }
 
     private var eyeLayerScale: CGFloat {
-        switch configuration.resolvedColorMode {
+        if configuration.usesSingleColorEyeControls || configuration.supportsEyeColorSelection {
+            return CGFloat(configuration.resolvedOuterEyeScale)
+        }
+
+        if configuration.usesFixedBlackColor {
+            return CGFloat(configuration.resolvedOuterEyeScale)
+        }
+
+        return switch configuration.resolvedColorMode {
         case .black:
             CGFloat(configuration.resolvedPupilScale)
-        case .automatic, .white:
+        case .automatic, .white, .brown:
             CGFloat(configuration.resolvedOuterEyeScale)
         }
     }
 }
 
-/// A bundled eye module extracted from the supplied shiba illustration.  Unlike
-/// imported eye art, it owns an explicit closed-eye frame so blinks read as an
-/// eyelid closing rather than a vertically squashed bitmap.
+/// Shiba's supplied eye art includes a dedicated closed-eye frame for blinks.
 private struct ShibaWatercolorEyePairView: View {
     let configuration: PetEyeModuleConfiguration
     let isBlinking: Bool
     let additionalOffset: CGSize
-
-    private static let openEye = load(named: "ShibaInuWatercolorEyeOpen")
-    private static let closedEye = load(named: "ShibaInuWatercolorEyeClosed")
+    let imagePurpose: PetImagePurpose
 
     var body: some View {
         EyePairLayout(configuration: configuration, additionalOffset: additionalOffset) {
@@ -111,28 +138,52 @@ private struct ShibaWatercolorEyePairView: View {
     }
 
     private func eyeImage(isMirrored: Bool) -> some View {
-        Group {
-            if let image = isBlinking ? Self.closedEye : Self.openEye {
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-            } else {
-                Image(systemName: "eye")
-                    .foregroundStyle(.secondary)
-            }
+        PetAssetImageView(
+            url: PetResourceURLCache.url(
+                named: isBlinking
+                    ? "ShibaInuWatercolorEyeClosed"
+                    : "ShibaInuWatercolorEyeOpen",
+                withExtension: "png"
+            ),
+            purpose: imagePurpose
+        ) {
+                Image(systemName: "eye").foregroundStyle(.secondary)
         }
         .frame(width: 18, height: 18)
         .scaleEffect(x: isMirrored ? -1 : 1, y: 1)
         .scaleEffect(CGFloat(configuration.resolvedPupilScale))
         .animation(.easeInOut(duration: 0.10), value: isBlinking)
     }
+}
 
-    private static func load(named name: String) -> NSImage? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "png") else {
-            return nil
+/// The reusable single-eye module from Little Cookie. `EyePairLayout` renders
+/// this one transparent asset twice, keeping the eye resource independently selectable.
+private struct CookieBlackBeanEyePairView: View {
+    let configuration: PetEyeModuleConfiguration
+    let additionalOffset: CGSize
+    let imagePurpose: PetImagePurpose
+
+    var body: some View {
+        EyePairLayout(configuration: configuration, additionalOffset: additionalOffset) {
+            eyeImage
+        } rightEye: {
+            eyeImage
         }
-        return NSImage(contentsOf: url)
+    }
+
+    private var eyeImage: some View {
+        PetAssetImageView(
+            url: PetResourceURLCache.url(
+                named: "CookieBlackBeanEye",
+                withExtension: "png"
+            ),
+            purpose: imagePurpose
+        ) {
+                Image(systemName: "eye")
+                    .foregroundStyle(.secondary)
+        }
+        .frame(width: 16, height: 16)
+        .scaleEffect(CGFloat(configuration.resolvedPupilScale))
     }
 }
 
@@ -187,6 +238,7 @@ struct CustomEyePairView: View {
     let asset: PetImportedVisualAsset
     let configuration: PetEyeModuleConfiguration
     var additionalOffset: CGSize = .zero
+    var imagePurpose: PetImagePurpose = .fullResolution
 
     var body: some View {
         EyePairLayout(configuration: configuration, additionalOffset: additionalOffset) {
@@ -197,16 +249,9 @@ struct CustomEyePairView: View {
     }
 
     private var eyeImage: some View {
-        Group {
-            if let image = PetImportedImageCache.image(for: asset.imageURL) {
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-            } else {
+        PetAssetImageView(url: asset.imageURL, purpose: imagePurpose) {
                 Image(systemName: "eye")
                     .foregroundStyle(.secondary)
-            }
         }
         .frame(width: 16, height: 16)
         .scaleEffect(CGFloat(configuration.resolvedPupilScale))

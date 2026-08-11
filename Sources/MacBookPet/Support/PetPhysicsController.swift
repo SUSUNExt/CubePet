@@ -1,5 +1,43 @@
 import AppKit
 
+enum PetPhysicsRefreshMode: Equatable {
+    case active
+    case resting
+
+    var interval: TimeInterval {
+        switch self {
+        case .active:
+            1.0 / 60.0
+        case .resting:
+            1.0 / 5.0
+        }
+    }
+
+    var tolerance: TimeInterval {
+        switch self {
+        case .active:
+            0
+        case .resting:
+            0.04
+        }
+    }
+}
+
+enum PetPhysicsRefreshPolicy {
+    static let mouseWakeDistance: CGFloat = 330
+
+    static func mode(
+        isResting: Bool,
+        isDragging: Bool,
+        mouseDistance: CGFloat
+    ) -> PetPhysicsRefreshMode {
+        if isDragging || !isResting || mouseDistance <= mouseWakeDistance {
+            return .active
+        }
+        return .resting
+    }
+}
+
 @MainActor
 final class PetPhysicsController {
     private static let dragActivationDistance: CGFloat = 5
@@ -14,6 +52,7 @@ final class PetPhysicsController {
     private var globalRightClickMonitor: Any?
     private var lastStepTime = ProcessInfo.processInfo.systemUptime
     private var lastGazeUpdateTime = ProcessInfo.processInfo.systemUptime
+    private var refreshMode = PetPhysicsRefreshMode.active
 
     private var position: CGPoint
     private var velocity = CGVector(dx: 0, dy: 0)
@@ -48,20 +87,31 @@ final class PetPhysicsController {
     }
 
     func start() {
+        scheduleTimer(for: .active)
+        startInputEventTap()
+        startRightClickEventMonitors()
+    }
+
+    private func scheduleTimer(for mode: PetPhysicsRefreshMode) {
         timer?.invalidate()
+        refreshMode = mode
         lastStepTime = ProcessInfo.processInfo.systemUptime
 
-        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: mode.interval, repeats: true) { [weak self] _ in
             // The timer is explicitly attached to RunLoop.main below, so stepping
             // synchronously avoids allocating a new task for every physics frame.
             MainActor.assumeIsolated {
                 self?.step()
             }
         }
+        timer.tolerance = mode.tolerance
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
-        startInputEventTap()
-        startRightClickEventMonitors()
+    }
+
+    private func setRefreshMode(_ mode: PetPhysicsRefreshMode) {
+        guard mode != refreshMode else { return }
+        scheduleTimer(for: mode)
     }
 
     func beginDrag(with event: NSEvent) {
@@ -110,6 +160,8 @@ final class PetPhysicsController {
     private func beginDrag(mouse: CGPoint, anchorInWindow: CGPoint, timestamp: TimeInterval) {
         let locationInWindow = anchorInWindow
         guard bodyBoundsInWindow.contains(locationInWindow) else { return }
+
+        setRefreshMode(.active)
 
         dragAnchorInWindow = locationInWindow
         dragTargetOrigin = CGPoint(x: mouse.x - locationInWindow.x, y: mouse.y - locationInWindow.y)
@@ -330,9 +382,10 @@ final class PetPhysicsController {
             x: position.x + PetMetrics.bodyInsetX,
             y: position.y + PetMetrics.bodyInsetY
         )
+        let screenFrame = activeScreenFrame(for: bodyPosition, bodySize: bodySize)
         let adjustedBodyPosition = collide(
             bodyPosition: bodyPosition,
-            in: activeScreenFrame(for: bodyPosition, bodySize: bodySize),
+            in: screenFrame,
             bodySize: bodySize
         )
         position = CGPoint(
@@ -340,7 +393,9 @@ final class PetPhysicsController {
             y: adjustedBodyPosition.position.y - PetMetrics.bodyInsetY
         )
 
-        window.setFrameOrigin(position)
+        if window.frame.origin.distance(to: position) > 0.01 {
+            window.setFrameOrigin(position)
+        }
         updateMouseEventPassthrough(for: window)
         updateMotionState()
 
@@ -349,6 +404,32 @@ final class PetPhysicsController {
         }
 
         updateMouseGaze(now: now)
+        updateRefreshMode(
+            gravityEnabled: gravityEnabled,
+            screenFrame: screenFrame,
+            adjustedBodyPosition: adjustedBodyPosition.position
+        )
+    }
+
+    private func updateRefreshMode(
+        gravityEnabled: Bool,
+        screenFrame: CGRect,
+        adjustedBodyPosition: CGPoint
+    ) {
+        let isOnFloor = abs(adjustedBodyPosition.y - screenFrame.minY) <= 0.5
+        let isResting = dragTargetOrigin == nil
+            && velocity.speed < 0.5
+            && (!gravityEnabled || isOnFloor)
+        let bodyCenter = CGPoint(
+            x: position.x + PetMetrics.bodyInsetX + PetMetrics.bodySize / 2,
+            y: position.y + PetMetrics.bodyInsetY + PetMetrics.bodySize / 2
+        )
+        let mode = PetPhysicsRefreshPolicy.mode(
+            isResting: isResting,
+            isDragging: motionState.isGrabbed,
+            mouseDistance: bodyCenter.distance(to: NSEvent.mouseLocation)
+        )
+        setRefreshMode(mode)
     }
 
     private func updateMouseEventPassthrough(for window: NSWindow) {
@@ -411,9 +492,11 @@ final class PetPhysicsController {
         let targetRotation = (velocity.dx / 62).clamped(to: -13...13)
         let stretch = (speed / 2_600).clamped(to: 0...0.12)
 
-        motionState.rotationDegrees = targetRotation
-        motionState.stretchX = 1 + stretch
-        motionState.stretchY = 1 - stretch * 0.55
+        motionState.updateMotionTransform(
+            rotationDegrees: targetRotation,
+            stretchX: 1 + stretch,
+            stretchY: 1 - stretch * 0.55
+        )
     }
 
     private func updateMouseGaze(now: TimeInterval) {
@@ -433,7 +516,7 @@ final class PetPhysicsController {
         let dx = mouse.x - bodyCenter.x
         let dy = mouse.y - bodyCenter.y
         let distance = hypot(dx, dy)
-        let gazeRange = CGFloat(330)
+        let gazeRange = PetPhysicsRefreshPolicy.mouseWakeDistance
 
         guard distance > 1, distance <= gazeRange else {
             setGazeOffset(.zero)

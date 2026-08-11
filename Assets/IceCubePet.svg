@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254">
+  <defs>
+    <linearGradient id="ice" x1="196" y1="182" x2="1028" y2="1084" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9FDFF"/>
+      <stop offset=".43" stop-color="#9AE5F4"/>
+      <stop offset="1" stop-color="#48A9D4"/>
+    </linearGradient>
+    <linearGradient id="side" x1="811" y1="256" x2="1012" y2="957" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#82D7EE"/>
+      <stop offset="1" stop-color="#3388BF"/>
+    </linearGradient>
+    <linearGradient id="foot" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#A5EAF7"/>
+      <stop offset="1" stop-color="#4AA5CF"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18"/>
+      <feOffset dy="19"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".25"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- soft ground shadow within the transparent canvas -->
+  <ellipse cx="630" cy="1055" rx="358" ry="58" fill="#2D7197" opacity=".2"/>
+  <!-- feet -->
+  <path d="M405 953c-48 2-101 46-101 89 0 36 38 51 108 47 70-4 117-25 112-62-4-35-66-76-119-74Z" fill="url(#foot)" stroke="#277FAE" stroke-width="18"/>
+  <path d="M806 953c-48 2-101 46-101 89 0 36 38 51 108 47 70-4 117-25 112-62-4-35-66-76-119-74Z" fill="url(#foot)" stroke="#277FAE" stroke-width="18"/>
+  <!-- arms -->
+  <path d="M261 597c-82 17-137 77-125 125 11 45 59 42 102 7l82-66" fill="none" stroke="#2B82AF" stroke-width="56" stroke-linecap="round"/>
+  <path d="M257 591c-68 15-107 58-101 94 5 26 33 28 71 3l74-57" fill="none" stroke="#A7ECF7" stroke-width="27" stroke-linecap="round"/>
+  <path d="M988 590c81 17 137 77 125 125-11 45-59 42-102 7l-82-66" fill="none" stroke="#2B82AF" stroke-width="56" stroke-linecap="round"/>
+  <path d="M992 585c68 15 107 58 101 94-5 26-33 28-71 3l-74-57" fill="none" stroke="#A7ECF7" stroke-width="27" stroke-linecap="round"/>
+  <!-- cube -->
+  <path d="M307 255c35-52 95-82 157-75l353 38c109 12 193 104 184 214l-35 430c-9 111-105 193-216 184l-415-35c-100-9-175-96-169-196l23-390c3-65 20-124 68-170Z" fill="url(#ice)" stroke="#217CAC" stroke-width="25" filter="url(#shadow)"/>
+  <!-- right ice plane -->
+  <path d="M821 225c111 31 188 117 180 215l-35 422c-8 102-90 179-187 184l-56-5c74-31 118-98 124-181l34-423c9-107-38-170-60-212Z" fill="url(#side)" opacity=".73"/>
+  <!-- top translucent plane -->
+  <path d="M313 258c43-51 101-79 158-72l344 36c76 8 142 56 171 121-91-21-181-35-272-40-119-6-238 3-357 28 3-26 12-50 36-73Z" fill="#F5FFFF" opacity=".48"/>
+  <!-- bevel -->
+  <path d="M310 768l21-347c7-111 90-195 195-188" fill="none" stroke="#D9FBFF" stroke-width="24" stroke-linecap="round" opacity=".76"/>
+  <path d="M346 908l393 34c87 8 160-56 166-145" fill="none" stroke="#1C70A1" stroke-width="18" stroke-linecap="round" opacity=".5"/>
+  <!-- ice facets -->
+  <path d="M396 402l170 91-38 192-160 59M566 493l180-142 101 175-158 82-161 77M528 685l161-77 117 160-85 169-193-115ZM847 526l93 91-134 151" fill="none" stroke="#E7FEFF" stroke-width="17" stroke-linejoin="round" opacity=".58"/>
+  <path d="M386 831l118-106m-25-367l93 135m223-142l52 175m-56 242l90 10" fill="none" stroke="#297EA9" stroke-width="15" stroke-linecap="round" opacity=".32"/>
+  <!-- cheek glow -->
+  <ellipse cx="426" cy="719" rx="75" ry="42" fill="#FFF8FF" opacity=".31"/>
+  <ellipse cx="804" cy="719" rx="75" ry="42" fill="#FFF8FF" opacity=".25"/>
+  <!-- eyes -->
+  <ellipse cx="494" cy="610" rx="49" ry="70" fill="#174A70" transform="rotate(-7 494 610)"/>
+  <ellipse cx="753" cy="607" rx="49" ry="70" fill="#174A70" transform="rotate(7 753 607)"/>
+  <ellipse cx="478" cy="582" rx="17" ry="25" fill="white"/>
+  <ellipse cx="737" cy="579" rx="17" ry="25" fill="white"/>
+  <circle cx="510" cy="639" r="10" fill="#81D9EF"/>
+  <circle cx="769" cy="636" r="10" fill="#81D9EF"/>
+  <!-- smile -->
+  <path d="M536 737c44 50 119 51 167 0" fill="none" stroke="#174A70" stroke-width="24" stroke-linecap="round"/>
+  <path d="M582 760c24 15 52 15 76 0" fill="none" stroke="#FFF" stroke-width="13" stroke-linecap="round"/>
+  <!-- ice sparkle -->
+  <path d="M362 454v-43m-22 21h44M866 312v-36m-18 18h36" stroke="white" stroke-width="15" stroke-linecap="round" opacity=".85"/>
+  <circle cx="913" cy="409" r="13" fill="white" opacity=".82"/>
+</svg>

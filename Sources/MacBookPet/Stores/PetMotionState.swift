@@ -25,6 +25,31 @@ final class PetMotionState: ObservableObject {
     private var experienceGainTask: Task<Void, Never>?
     private var satietyGainTask: Task<Void, Never>?
 
+    @discardableResult
+    func updateMotionTransform(
+        rotationDegrees: CGFloat,
+        stretchX: CGFloat,
+        stretchY: CGFloat,
+        tolerance: CGFloat = 0.0001
+    ) -> Bool {
+        var didChange = false
+
+        if abs(self.rotationDegrees - rotationDegrees) > tolerance {
+            self.rotationDegrees = rotationDegrees
+            didChange = true
+        }
+        if abs(self.stretchX - stretchX) > tolerance {
+            self.stretchX = stretchX
+            didChange = true
+        }
+        if abs(self.stretchY - stretchY) > tolerance {
+            self.stretchY = stretchY
+            didChange = true
+        }
+
+        return didChange
+    }
+
     func showExperienceGain(_ amount: Int) {
         guard amount > 0 else { return }
 

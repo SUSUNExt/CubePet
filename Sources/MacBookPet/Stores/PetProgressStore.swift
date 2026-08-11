@@ -35,21 +35,20 @@ final class PetProgressStore: ObservableObject {
         rewardedRuntime = defaults.double(forKey: Self.rewardedRuntimeKey)
         experienceByPet = Self.decodeDictionary(defaults.data(forKey: Self.experienceKey))
         pendingFoodByToken = Self.decodeStringDictionary(defaults.data(forKey: Self.pendingFoodKey))
-        ownedPetIDs = Set(defaults.stringArray(forKey: Self.ownedPetsKey) ?? [PetCatalog.cube.id])
-        ownedSkinIDs = Set(defaults.stringArray(forKey: Self.ownedSkinsKey) ?? [PetCatalog.cube.skins[0].id])
+        if let persistedPetIDs = defaults.stringArray(forKey: Self.ownedPetsKey) {
+            ownedPetIDs = Set(persistedPetIDs)
+        } else {
+            ownedPetIDs = Set(PetCatalog.pets.filter { $0.price == 0 }.map(\.id))
+        }
+        ownedSkinIDs = Set(defaults.stringArray(forKey: Self.ownedSkinsKey) ?? [])
 
-        // Preserve selections made by users of versions released before the shop existed.
-        ownedPetIDs.formUnion(PetCatalog.pets.map(\.id))
+        // Existing selections remain owned even when they predate persisted
+        // shop data. Paid pets added later stay locked for new users.
         ownedPetIDs.insert(selectedPetID)
-        ownedSkinIDs.formUnion(
-            PetCatalog.pets
-                .flatMap(\.skins)
-                .filter { $0.price == 0 }
-                .map(\.id)
-        )
         ownedSkinIDs.insert(selectedSkinID)
-        for petID in ownedPetIDs {
-            if let firstSkinID = PetCatalog.pet(id: petID)?.skins.first?.id {
+        for pet in PetCatalog.pets where ownedPetIDs.contains(pet.id) {
+            ownedSkinIDs.formUnion(pet.skins.filter { $0.price == 0 }.map(\.id))
+            if let firstSkinID = pet.skins.first?.id {
                 ownedSkinIDs.insert(firstSkinID)
             }
         }
@@ -103,6 +102,17 @@ final class PetProgressStore: ObservableObject {
         ownedSkinIDs.contains(skinID)
     }
 
+    func canBuyPet(_ pet: PetDefinition) -> Bool {
+        !ownsPet(pet.id) && coins >= pet.price
+    }
+
+    func canBuySkin(_ skin: PetSkinDefinition, for petID: String) -> Bool {
+        ownsPet(petID)
+            && !ownsSkin(skin.id)
+            && skin.isUnlocked(at: level(for: petID))
+            && coins >= skin.price
+    }
+
     @discardableResult
     func canAfford(_ food: FoodDefinition) -> Bool {
         coins >= food.price
@@ -118,6 +128,17 @@ final class PetProgressStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    func purchasePetMenuItem(_ item: PetShopItemDefinition) -> Bool {
+        guard ShopCatalog.petMenuItem(id: item.id) == item, spend(item.price) else {
+            return false
+        }
+
+        persist()
+        onChange?()
+        return true
+    }
+
     func canConsumeFood(
         _ payload: FoodFilePayload,
         for petID: String,
@@ -126,6 +147,29 @@ final class PetProgressStore: ObservableObject {
         (allowUnownedPet || ownsPet(petID))
             && pendingFoodByToken[payload.token] == payload.foodID
             && ShopCatalog.food(id: payload.foodID) != nil
+    }
+
+    func canReceiveInventoryFood(
+        for petID: String,
+        allowUnownedPet: Bool = false
+    ) -> Bool {
+        allowUnownedPet || ownsPet(petID)
+    }
+
+    @discardableResult
+    func receiveInventoryFood(
+        _ food: FoodDefinition,
+        for petID: String,
+        allowUnownedPet: Bool = false
+    ) -> Int? {
+        guard canReceiveInventoryFood(for: petID, allowUnownedPet: allowUnownedPet) else {
+            return nil
+        }
+
+        experienceByPet[petID, default: 0] += food.experience
+        persist()
+        onChange?()
+        return food.experience
     }
 
     @discardableResult
@@ -148,12 +192,7 @@ final class PetProgressStore: ObservableObject {
 
     @discardableResult
     func buySkin(_ skin: PetSkinDefinition, for petID: String) -> Bool {
-        guard
-            ownsPet(petID),
-            !ownsSkin(skin.id),
-            skin.isUnlocked(at: level(for: petID)),
-            spend(skin.price)
-        else { return false }
+        guard canBuySkin(skin, for: petID), spend(skin.price) else { return false }
 
         ownedSkinIDs.insert(skin.id)
         persist()
@@ -163,7 +202,7 @@ final class PetProgressStore: ObservableObject {
 
     @discardableResult
     func buyPet(_ pet: PetDefinition) -> Bool {
-        guard !ownsPet(pet.id), spend(pet.price) else { return false }
+        guard canBuyPet(pet), spend(pet.price) else { return false }
 
         ownedPetIDs.insert(pet.id)
         if let firstSkinID = pet.skins.first?.id {

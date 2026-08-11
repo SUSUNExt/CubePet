@@ -1,59 +1,91 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 enum CatPetAsset {
-    static let image = load(named: "CatPet")
-    static let largeMouthImage = load(named: "CatPetMouthLarge")
-    static let curledSleepingImage = load(named: "CatPetCurledSleeping")
-    static let hungryImage = load(named: "CatPetHungry")
-    static let grayTabbyImage = load(named: "CatPetGrayFaceless")
-    static let grayTabbyHungryImage = load(named: "CatPetGrayHungry")
-    static let grayTabbySleepingImage = load(named: "CatPetGraySleeping")
-    static let grayTabbyLargeMouthImage = load(named: "CatPetGrayMouthLarge")
-    static let calicoImage = load(named: "CatPetCalicoFaceless")
-    static let calicoSleepingImage = load(named: "CatPetCalicoSleeping")
-    static let calicoHungryImage = load(named: "CatPetCalicoHungry")
-    static let calicoLargeMouthImage = load(named: "CatPetCalicoMouthLarge")
-    static let calicoMouthOnlyImage = load(named: "CatPetCalicoMouthOnly")
-    static let blackImage = load(named: "CatPetBlackFaceless")
-    static let blackSleepingImage = load(named: "CatPetBlackSleeping")
-    static let blackHungryImage = load(named: "CatPetBlackHungry")
-    static let blackLargeMouthImage = load(named: "CatPetBlackMouthLarge")
-    static let siameseImage = load(named: "CatPetSiameseFaceless")
-    static let siameseSleepingImage = load(named: "CatPetSiameseSleeping")
-    static let siameseHungryImage = load(named: "CatPetSiameseHungry")
-    static let siameseMouthImage = load(named: "CatPetSiameseMouthUnique")
-    static let yellowImage = load(named: "CatPetYellowFaceless")
-    static let yellowHappyImage = load(named: "CatPetYellowHappy")
-    static let yellowScaredImage = load(named: "CatPetYellowScared")
-    static let yellowSleepingImage = load(named: "CatPetYellowSleeping")
+    static let imageName = "CatPet"
+    static let largeMouthImageName = "CatPetMouthLarge"
+    static let curledSleepingImageName = "CatPetCurledSleeping"
+    static let hungryImageName = "CatPetHungry"
+    static let grayTabbyImageName = "CatPetGrayFaceless"
+    static let grayTabbyHungryImageName = "CatPetGrayHungry"
+    static let grayTabbySleepingImageName = "CatPetGraySleeping"
+    static let grayTabbyLargeMouthImageName = "CatPetGrayMouthLarge"
+    static let calicoImageName = "CatPetCalicoFaceless"
+    static let calicoSleepingImageName = "CatPetCalicoSleeping"
+    static let calicoHungryImageName = "CatPetCalicoHungry"
+    static let calicoLargeMouthImageName = "CatPetCalicoMouthLarge"
+    static let calicoMouthOnlyImageName = "CatPetCalicoMouthOnly"
+    static let blackImageName = "CatPetBlackFaceless"
+    static let blackSleepingImageName = "CatPetBlackSleeping"
+    static let blackHungryImageName = "CatPetBlackHungry"
+    static let blackLargeMouthImageName = "CatPetBlackMouthLarge"
+    static let siameseImageName = "CatPetSiameseFaceless"
+    static let siameseSleepingImageName = "CatPetSiameseSleeping"
+    static let siameseHungryImageName = "CatPetSiameseHungry"
+    static let siameseMouthImageName = "CatPetSiameseMouthUnique"
+    static let yellowImageName = "CatPetYellowFaceless"
+    static let yellowHappyImageName = "CatPetYellowHappy"
+    static let yellowScaredImageName = "CatPetYellowScared"
+    static let yellowSleepingImageName = "CatPetYellowSleeping"
+    static let yellowEatingImageName = "CatPetYellowEatingOfficial689cdacb"
+    static let yellowHungryImageName = "CatPetYellowHungry"
+
+    static let image = load(named: imageName)
+    static let largeMouthImage = load(named: largeMouthImageName)
+    static let curledSleepingImage = load(named: curledSleepingImageName)
+    static let hungryImage = load(named: hungryImageName)
+    static let grayTabbyImage = load(named: grayTabbyImageName)
+    static let grayTabbyHungryImage = load(named: grayTabbyHungryImageName)
+    static let grayTabbySleepingImage = load(named: grayTabbySleepingImageName)
+    static let grayTabbyLargeMouthImage = load(named: grayTabbyLargeMouthImageName)
+    static let calicoImage = load(named: calicoImageName)
+    static let calicoSleepingImage = load(named: calicoSleepingImageName)
+    static let calicoHungryImage = load(named: calicoHungryImageName)
+    static let calicoLargeMouthImage = load(named: calicoLargeMouthImageName)
+    static let calicoMouthOnlyImage = load(named: calicoMouthOnlyImageName)
+    static let blackImage = load(named: blackImageName)
+    static let blackSleepingImage = load(named: blackSleepingImageName)
+    static let blackHungryImage = load(named: blackHungryImageName)
+    static let blackLargeMouthImage = load(named: blackLargeMouthImageName)
+    static let siameseImage = load(named: siameseImageName)
+    static let siameseSleepingImage = load(named: siameseSleepingImageName)
+    static let siameseHungryImage = load(named: siameseHungryImageName)
+    static let siameseMouthImage = load(named: siameseMouthImageName)
+    static let yellowImage = load(named: yellowImageName)
+    static let yellowHappyImage = load(named: yellowHappyImageName)
+    static let yellowScaredImage = load(named: yellowScaredImageName)
+    static let yellowSleepingImage = load(named: yellowSleepingImageName)
     // This is the user-approved imported eating artwork, promoted to the
     // official Yellow Xiaohuang default.
-    static let yellowEatingImage = load(named: "CatPetYellowEatingOfficial689cdacb")
-    static let yellowHungryImage = load(named: "CatPetYellowHungry")
+    static let yellowEatingImage = load(named: yellowEatingImageName)
+    static let yellowHungryImage = load(named: yellowHungryImageName)
 
     private static func load(named name: String) -> NSImage? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "png") else {
+        guard let url = PetResourceURLCache.url(named: name, withExtension: "png") else {
             return nil
         }
-        return NSImage(contentsOf: url)
+        return PetImportedImageCache.image(for: url)
     }
 }
 
 struct CatPetImage: View {
-    let image: NSImage?
+    let resourceName: String
+    let imagePurpose: PetImagePurpose
 
-    init(image: NSImage? = CatPetAsset.image) {
-        self.image = image
+    init(
+        resourceName: String = "CatPet",
+        imagePurpose: PetImagePurpose = .fullResolution
+    ) {
+        self.resourceName = resourceName
+        self.imagePurpose = imagePurpose
     }
 
     var body: some View {
-        if let image {
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-        } else {
+        PetAssetImageView(
+            url: PetResourceURLCache.url(named: resourceName, withExtension: "png"),
+            purpose: imagePurpose
+        ) {
             Circle()
                 .fill(Color(red: 0.94, green: 0.44, blue: 0.08))
                 .overlay(
@@ -82,6 +114,7 @@ struct CatPetView: View {
     let visualConfiguration: PetVisualConfiguration
     var customEyeAsset: PetImportedVisualAsset? = nil
     var appliesVerticalBaseOffsetInView = true
+    var imagePurpose: PetImagePurpose = .fullResolution
 
     var body: some View {
         let isEating = mouthOpen > 0.02
@@ -94,11 +127,17 @@ struct CatPetView: View {
 
         return ZStack {
             ZStack {
-                CatPetImage(image: catImage(isEating: false))
+                CatPetImage(
+                    resourceName: catImageResourceName(isEating: false),
+                    imagePurpose: imagePurpose
+                )
                     .scaleEffect(imageScale, anchor: .bottom)
 
                 if isEating {
-                    CatPetImage(image: catImage(isEating: true))
+                    CatPetImage(
+                        resourceName: catImageResourceName(isEating: true),
+                        imagePurpose: imagePurpose
+                    )
                         .scaleEffect(
                             isGrayTabby || isYellow ? imageScale : (isDefaultSkin ? 0.925 : 1),
                             anchor: .bottom
@@ -118,7 +157,8 @@ struct CatPetView: View {
                 CustomEyePairView(
                     asset: customEyeAsset,
                     configuration: eyeConfiguration,
-                    additionalOffset: CGSize(width: 0, height: defaultEyeOffsetY)
+                    additionalOffset: CGSize(width: 0, height: defaultEyeOffsetY),
+                    imagePurpose: imagePurpose
                 )
                 .frame(width: PetMetrics.bodyContentSize, height: PetMetrics.bodyContentSize)
                 .scaleEffect(isGrayTabby ? 1.08 : 1, anchor: .bottom)
@@ -213,43 +253,43 @@ struct CatPetView: View {
         )
     }
 
-    private func catImage(isEating: Bool) -> NSImage? {
+    private func catImageResourceName(isEating: Bool) -> String {
         if isYellow {
-            if isEating { return CatPetAsset.yellowEatingImage }
+            if isEating { return CatPetAsset.yellowEatingImageName }
             switch expression {
-            case .happy: return CatPetAsset.yellowHappyImage
-            case .scared: return CatPetAsset.yellowScaredImage
-            case .sleeping: return CatPetAsset.yellowSleepingImage
-            case .hungry: return CatPetAsset.yellowHungryImage
-            default: return CatPetAsset.yellowImage
+            case .happy: return CatPetAsset.yellowHappyImageName
+            case .scared: return CatPetAsset.yellowScaredImageName
+            case .sleeping: return CatPetAsset.yellowSleepingImageName
+            case .hungry: return CatPetAsset.yellowHungryImageName
+            default: return CatPetAsset.yellowImageName
             }
         }
         if isEating {
-            if isGrayTabby { return CatPetAsset.grayTabbyLargeMouthImage }
-            if isCalico { return CatPetAsset.calicoMouthOnlyImage }
-            if isBlack { return CatPetAsset.blackLargeMouthImage }
-            if isSiamese { return CatPetAsset.siameseMouthImage }
-            return CatPetAsset.largeMouthImage
+            if isGrayTabby { return CatPetAsset.grayTabbyLargeMouthImageName }
+            if isCalico { return CatPetAsset.calicoMouthOnlyImageName }
+            if isBlack { return CatPetAsset.blackLargeMouthImageName }
+            if isSiamese { return CatPetAsset.siameseMouthImageName }
+            return CatPetAsset.largeMouthImageName
         }
         if usesBakedSleepingEyes {
-            if isGrayTabby { return CatPetAsset.grayTabbySleepingImage }
-            if isCalico { return CatPetAsset.calicoSleepingImage }
-            if isBlack { return CatPetAsset.blackSleepingImage }
-            if isSiamese { return CatPetAsset.siameseSleepingImage }
-            return CatPetAsset.curledSleepingImage
+            if isGrayTabby { return CatPetAsset.grayTabbySleepingImageName }
+            if isCalico { return CatPetAsset.calicoSleepingImageName }
+            if isBlack { return CatPetAsset.blackSleepingImageName }
+            if isSiamese { return CatPetAsset.siameseSleepingImageName }
+            return CatPetAsset.curledSleepingImageName
         }
         if !isCurrentlyEating && usesBakedHungryEyes {
-            if isGrayTabby { return CatPetAsset.grayTabbyHungryImage }
-            if isCalico { return CatPetAsset.calicoHungryImage }
-            if isBlack { return CatPetAsset.blackHungryImage }
-            if isSiamese { return CatPetAsset.siameseHungryImage }
-            return CatPetAsset.hungryImage
+            if isGrayTabby { return CatPetAsset.grayTabbyHungryImageName }
+            if isCalico { return CatPetAsset.calicoHungryImageName }
+            if isBlack { return CatPetAsset.blackHungryImageName }
+            if isSiamese { return CatPetAsset.siameseHungryImageName }
+            return CatPetAsset.hungryImageName
         }
-        if isGrayTabby { return CatPetAsset.grayTabbyImage }
-        if isCalico { return CatPetAsset.calicoImage }
-        if isBlack { return CatPetAsset.blackImage }
-        if isSiamese { return CatPetAsset.siameseImage }
-        return CatPetAsset.image
+        if isGrayTabby { return CatPetAsset.grayTabbyImageName }
+        if isCalico { return CatPetAsset.calicoImageName }
+        if isBlack { return CatPetAsset.blackImageName }
+        if isSiamese { return CatPetAsset.siameseImageName }
+        return CatPetAsset.imageName
     }
 
     private func usesBakedEyes(isEating: Bool) -> Bool {
@@ -288,6 +328,8 @@ struct CatPetView: View {
             return .black
         case .white:
             return .white
+        case .brown:
+            return Color(red: 112.0 / 255.0, green: 68.0 / 255.0, blue: 41.0 / 255.0)
         case .automatic:
             return isEating
                 ? Color(red: 0.08, green: 0.055, blue: 0.035)
@@ -301,6 +343,8 @@ struct CatPetView: View {
             return false
         case .white:
             return true
+        case .brown:
+            return false
         case .automatic:
             break
         }

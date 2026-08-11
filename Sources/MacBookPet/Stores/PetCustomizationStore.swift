@@ -12,6 +12,27 @@ final class PetCustomizationStore: ObservableObject {
     private let configurationFileURL: URL?
     private let legacyConfigurationFileURL: URL?
     private let assetStore: PetAssetStore?
+    private var currentVisualConfigurationCache: CurrentVisualConfigurationCache?
+
+    private struct CurrentVisualConfigurationCache {
+        let petID: String
+        let skinID: String
+        let customConfiguration: PetVisualConfiguration?
+        let overrideConfiguration: PetVisualConfiguration?
+        let resolvedConfiguration: PetVisualConfiguration
+
+        func matches(
+            petID: String,
+            skinID: String,
+            customConfiguration: PetVisualConfiguration?,
+            overrideConfiguration: PetVisualConfiguration?
+        ) -> Bool {
+            self.petID == petID
+                && self.skinID == skinID
+                && self.customConfiguration == customConfiguration
+                && self.overrideConfiguration == overrideConfiguration
+        }
+    }
 
     init(
         fileManager: FileManager = .default,
@@ -47,7 +68,60 @@ final class PetCustomizationStore: ObservableObject {
         guard let override = visualOverrides[Self.key(petID: petID, skinID: skinID)] else {
             return official
         }
-        return override.fillingMissingStates(from: official)
+        var resolved = override.fillingMissingStates(from: official)
+
+        // Older Shiba configurations referred to the artwork as an
+        // `officialSkin`. Shiba now ships each expression as a bundled image,
+        // so retain a user's eye/layout edits while restoring that base art.
+        if petID == PetCatalog.dog.id, skinID == "dog.shiba" {
+            for state in PetVisualState.allCases {
+                var stateConfiguration = resolved.configuration(for: state)
+                guard stateConfiguration.base == .officialSkin else { continue }
+                stateConfiguration.base = official.configuration(for: state).base
+                resolved.setConfiguration(stateConfiguration, for: state)
+            }
+        }
+
+        return resolved
+    }
+
+    func resolvedVisualConfiguration(
+        petID: String,
+        skinID: String
+    ) -> PetVisualConfiguration {
+        let customConfiguration = customPets.first { $0.id == petID }?.visualConfiguration
+        let overrideConfiguration = visualOverrides[Self.key(petID: petID, skinID: skinID)]
+
+        if let cache = currentVisualConfigurationCache,
+           cache.matches(
+               petID: petID,
+               skinID: skinID,
+               customConfiguration: customConfiguration,
+               overrideConfiguration: overrideConfiguration
+           ) {
+            return cache.resolvedConfiguration
+        }
+
+        let resolvedConfiguration: PetVisualConfiguration
+        if let customConfiguration {
+            resolvedConfiguration = customConfiguration
+        } else {
+            let official = PetVisualDefaults.configuration(petID: petID, skinID: skinID)
+            resolvedConfiguration = visualConfiguration(
+                petID: petID,
+                skinID: skinID,
+                official: official
+            )
+        }
+
+        currentVisualConfigurationCache = CurrentVisualConfigurationCache(
+            petID: petID,
+            skinID: skinID,
+            customConfiguration: customConfiguration,
+            overrideConfiguration: overrideConfiguration,
+            resolvedConfiguration: resolvedConfiguration
+        )
+        return resolvedConfiguration
     }
 
     func customPet(id: String) -> CustomPetDefinition? {
@@ -263,6 +337,17 @@ final class PetCustomizationStore: ObservableObject {
             customPets = document.customPets.filter { $0.id.hasPrefix("custom:") }
             eyePresets = document.eyePresets.filter { $0.id.hasPrefix("eye:") }
             musicReactionSettings = document.musicReactionSettings
+            var needsPersistence = false
+            if document.schemaVersion < 4 {
+                needsPersistence = migrateLegacyCookieBlackBeanEyeControls()
+            }
+            if document.schemaVersion < 5 {
+                _ = migrateLegacyTrackingBlackEyes()
+                needsPersistence = true
+            }
+            if needsPersistence {
+                try? persistDocument()
+            }
             return
         }
 
@@ -276,6 +361,9 @@ final class PetCustomizationStore: ObservableObject {
         else { return }
 
         visualOverrides = legacyOverrides
+        if migrateLegacyCookieBlackBeanEyeControls() || migrateLegacyTrackingBlackEyes() {
+            try? persistDocument()
+        }
     }
 
     private func persistDocument() throws {
@@ -321,6 +409,41 @@ final class PetCustomizationStore: ObservableObject {
         for assetID in configuration.referencedAssetIDs where assetURL(for: assetID) == nil {
             throw PetCustomizationStoreError.assetNotFound(assetID)
         }
+    }
+
+    /// Before schema 4, the black-bean eye reused the dual-color panel. Its
+    /// pupil-movement value was saved but ignored during rendering, so migrate
+    /// it to the old visible behavior when the new single-color control starts
+    /// honoring it.
+    private func migrateLegacyCookieBlackBeanEyeControls() -> Bool {
+        var didMigrate = false
+        visualOverrides = visualOverrides.mapValues { configuration in
+            var updated = configuration
+            if updated.resetLegacyCookieBlackBeanEyeControls() {
+                didMigrate = true
+            }
+            return updated
+        }
+        return didMigrate
+    }
+
+    private func migrateLegacyTrackingBlackEyes() -> Bool {
+        var didMigrate = false
+        visualOverrides = visualOverrides.mapValues { configuration in
+            var updated = configuration
+            if updated.replaceLegacyTrackingBlackEyes() {
+                didMigrate = true
+            }
+            return updated
+        }
+        customPets = customPets.map { pet in
+            var updated = pet
+            if updated.visualConfiguration.replaceLegacyTrackingBlackEyes() {
+                didMigrate = true
+            }
+            return updated
+        }
+        return didMigrate
     }
 
     private func removeUnusedAssets(from candidates: Set<String>) {
@@ -376,6 +499,7 @@ final class PetCustomizationStore: ObservableObject {
     }
 }
 
+
 private struct PetCustomizationDocument: Codable {
     let schemaVersion: Int
     var visualOverrides: [String: PetVisualConfiguration]
@@ -389,7 +513,7 @@ private struct PetCustomizationDocument: Codable {
         eyePresets: [PetEyePreset],
         musicReactionSettings: MusicReactionSettings
     ) {
-        schemaVersion = 3
+        schemaVersion = 5
         self.visualOverrides = visualOverrides
         self.customPets = customPets
         self.eyePresets = eyePresets

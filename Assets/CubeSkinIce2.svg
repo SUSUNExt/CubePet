@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254">
+  <defs>
+    <clipPath id="cube"><rect x="176" y="188" width="902" height="874" rx="148"/></clipPath>
+    <linearGradient id="ice" x1="260" y1="206" x2="1010" y2="1045" gradientUnits="userSpaceOnUse"><stop stop-color="#E7FCFF"/><stop offset=".36" stop-color="#9FE5F6"/><stop offset="1" stop-color="#4FADD4"/></linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#A2E8F8"/><stop offset="1" stop-color="#3A8CBD"/></linearGradient>
+    <radialGradient id="bubble"><stop stop-color="white" stop-opacity=".8"/><stop offset=".63" stop-color="#C5F4FF" stop-opacity=".32"/><stop offset="1" stop-color="#479BC6" stop-opacity=".25"/></radialGradient>
+  </defs>
+  <g clip-path="url(#cube)">
+    <rect x="176" y="188" width="902" height="874" fill="url(#ice)"/>
+    <!-- crystalline panes -->
+    <path d="M176 403l242-189 192 133-126 247-308 47V403Z" fill="#EFFDFF" opacity=".36"/>
+    <path d="M610 347l213-133 255 193v229L845 569Z" fill="#7CCDE7" opacity=".35"/>
+    <path d="M484 594l361-25 233 237v256H704L481 848Z" fill="#4B9EC8" opacity=".2"/>
+    <path d="M176 641l308-47-3 254-210 214H176V641Z" fill="#C5F4FC" opacity=".28"/>
+    <!-- glassy top reflection -->
+    <path d="M218 294c39-59 92-77 163-78l498 3c75 1 129 25 162 83-194-45-623-41-823-8Z" fill="white" opacity=".52"/>
+    <path d="M291 249c80-19 572-28 680 22l47 66c-154-42-630-45-757-5l30-83Z" fill="#FFF" opacity=".22"/>
+    <!-- crack network -->
+    <g fill="none" stroke="#F5FFFF" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+      <path d="M326 383l146 119-71 154 152 127-54 155" stroke-width="13"/>
+      <path d="M472 502l167-104 128 107-99 145 177 131" stroke-width="12"/>
+      <path d="M767 505l144-88 79 132-113 114 126 145" stroke-width="10"/>
+      <path d="M401 656l-117 80 89 117" stroke-width="9"/>
+      <path d="M668 650l-27 142 137 144" stroke-width="11"/>
+    </g>
+    <g fill="none" stroke="#3D96C0" stroke-linecap="round" stroke-linejoin="round" opacity=".36">
+      <path d="M333 383l139 119M401 656l-117 80M639 398l128 107M877 663l126 145M641 792l137 144" stroke-width="16"/>
+    </g>
+    <!-- frozen bubbles -->
+    <g fill="url(#bubble)" stroke="white" stroke-opacity=".54" stroke-width="6">
+      <circle cx="355" cy="465" r="30"/><circle cx="887" cy="354" r="22"/><circle cx="935" cy="665" r="38"/>
+      <circle cx="732" cy="817" r="27"/><circle cx="319" cy="860" r="20"/><circle cx="561" cy="322" r="16"/>
+    </g>
+    <!-- cold lower tint -->
+    <path d="M176 880c189 61 632 80 902 7v175H176V880Z" fill="#2F8ABB" opacity=".17"/>
+    <path d="M938 239c82 33 140 104 140 176v469c0 76-47 137-115 158l-69-10c47-51 65-105 65-177V413c0-85-9-135-53-184l32 10Z" fill="url(#side)" opacity=".54"/>
+  </g>
+  <rect x="176" y="188" width="902" height="874" rx="148" fill="none" stroke="#4E9FC3" stroke-width="27"/>
+  <path d="M303 231c-57 13-91 59-95 118l-10 420" fill="none" stroke="white" stroke-opacity=".8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M250 926c30 59 78 93 143 98h494" fill="none" stroke="#277DAA" stroke-opacity=".45" stroke-width="15" stroke-linecap="round"/>
+  <!-- icy glints -->
+  <g fill="white" opacity=".95"><path d="M903 294l9 24 24 9-24 9-9 24-9-24-24-9 24-9 9-24Z"/><path d="M294 566l7 18 18 7-18 7-7 18-7-18-18-7 18-7 7-18Z"/><circle cx="821" cy="906" r="12"/></g>
+</svg>

@@ -7,6 +7,7 @@ struct ImportedPetVisualView: View {
     let baseOffset: NormalizedVisualOffset?
     let animationPlaybackRate: Double?
     var playsAnimation = true
+    var imagePurpose: PetImagePurpose = .fullResolution
     let configuration: PetEyeModuleConfiguration?
     let expression: PetExpression
     let isBlinking: Bool
@@ -22,7 +23,8 @@ struct ImportedPetVisualView: View {
                     AnimatedPetImageView(
                         asset: asset,
                         playbackRate: animationPlaybackRate ?? 1,
-                        playsAnimation: playsAnimation
+                        playsAnimation: playsAnimation,
+                        imagePurpose: imagePurpose
                     )
                 } else if showsMissingAssetIcon {
                     Image(systemName: "photo")
@@ -38,7 +40,8 @@ struct ImportedPetVisualView: View {
                     expression: expression,
                     isBlinking: isBlinking,
                     gazeOffset: gazeOffset,
-                    customEyeAsset: customEyeAsset
+                    customEyeAsset: customEyeAsset,
+                    imagePurpose: imagePurpose
                 )
             }
         }
@@ -59,7 +62,9 @@ private struct AnimatedPetImageView: View {
     let asset: PetImportedVisualAsset
     let playbackRate: Double
     let playsAnimation: Bool
+    let imagePurpose: PetImagePurpose
 
+    @ViewBuilder
     var body: some View {
         if asset.isAnimated && playsAnimation {
             TimelineView(.animation) { timeline in
@@ -67,6 +72,8 @@ private struct AnimatedPetImageView: View {
                     rendered(image)
                 }
             }
+        } else if case .listThumbnail = imagePurpose {
+            PetAssetImageView(url: asset.imageURL, purpose: imagePurpose)
         } else if let image = firstImage {
             rendered(image)
         }

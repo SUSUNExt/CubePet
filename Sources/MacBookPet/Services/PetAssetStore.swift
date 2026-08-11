@@ -54,6 +54,122 @@ struct PetImportedVisualAsset {
     }
 }
 
+enum PetImagePurpose: Equatable {
+    case fullResolution
+    case listThumbnail(maxPixelSize: Int)
+}
+
+@MainActor
+enum PetResourceURLCache {
+    private enum LookupResult {
+        case found(URL)
+        case missing
+    }
+
+    private static var resultsByKey: [String: LookupResult] = [:]
+
+    static func url(named name: String, withExtension pathExtension: String?) -> URL? {
+        let key = "\(name)|\(pathExtension ?? "")"
+        if let result = resultsByKey[key] {
+            switch result {
+            case let .found(url):
+                return url
+            case .missing:
+                return nil
+            }
+        }
+
+        guard let url = Bundle.main.url(forResource: name, withExtension: pathExtension) else {
+            resultsByKey[key] = .missing
+            return nil
+        }
+        resultsByKey[key] = .found(url)
+        return url
+    }
+}
+
+private final class PetThumbnailImageBox {
+    let image: CGImage
+
+    init(image: CGImage) {
+        self.image = image
+    }
+}
+
+/// Page-scoped cache for shop and collection thumbnails. Thumbnail generation
+/// uses ImageIO's source thumbnail path, so the original image is never decoded
+/// into a full-size bitmap for list rendering.
+enum PetListThumbnailCache {
+    private static let cache: NSCache<NSString, PetThumbnailImageBox> = {
+        let cache = NSCache<NSString, PetThumbnailImageBox>()
+        cache.countLimit = 96
+        cache.totalCostLimit = 32 * 1_024 * 1_024
+        return cache
+    }()
+    private static let lock = NSLock()
+    private static var generation: UInt = 0
+
+    static func currentGeneration() -> UInt {
+        lock.withLock { generation }
+    }
+
+    static func cachedThumbnail(for url: URL, maxPixelSize: Int) -> CGImage? {
+        cache.object(forKey: cacheKey(url: url, maxPixelSize: maxPixelSize))?.image
+    }
+
+    static func thumbnail(
+        for url: URL,
+        maxPixelSize: Int,
+        generation requestedGeneration: UInt? = nil
+    ) -> CGImage? {
+        let normalizedMaxPixelSize = max(1, maxPixelSize)
+        let key = cacheKey(url: url, maxPixelSize: normalizedMaxPixelSize)
+        if let image = cache.object(forKey: key)?.image {
+            return image
+        }
+
+        guard
+            let source = CGImageSourceCreateWithURL(
+                url as CFURL,
+                [kCGImageSourceShouldCache: false] as CFDictionary
+            ),
+            let image = CGImageSourceCreateThumbnailAtIndex(
+                source,
+                0,
+                [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: normalizedMaxPixelSize,
+                    kCGImageSourceShouldCacheImmediately: true
+                ] as CFDictionary
+            )
+        else { return nil }
+
+        let canStore = lock.withLock {
+            requestedGeneration == nil || requestedGeneration == generation
+        }
+        if canStore {
+            cache.setObject(
+                PetThumbnailImageBox(image: image),
+                forKey: key,
+                cost: max(image.width * image.height * 4, 1)
+            )
+        }
+        return image
+    }
+
+    static func removeAll() {
+        lock.withLock {
+            generation &+= 1
+        }
+        cache.removeAllObjects()
+    }
+
+    private static func cacheKey(url: URL, maxPixelSize: Int) -> NSString {
+        "\(url.standardizedFileURL.path)|\(maxPixelSize)" as NSString
+    }
+}
+
 /// Shared decoded-image cache for user-provided still images and animation frames.
 /// Assets are immutable between editor mutations, which makes URL-based caching safe
 /// as long as callers invalidate the affected URLs before changing them on disk.
@@ -91,6 +207,35 @@ enum PetImportedImageCache {
         let width = bitmap?.pixelsWide ?? Int(image.size.width)
         let height = bitmap?.pixelsHigh ?? Int(image.size.height)
         return max(width * height * 4, 1)
+    }
+}
+
+/// Bundled pet artwork never changes during a process lifetime. Cache both
+/// successful and failed lookups so SwiftUI redraws do not repeatedly ask the
+/// bundle to resolve the same resource path.
+@MainActor
+enum PetBundledVisualAssetCache {
+    private static var assetsByName: [String: PetImportedVisualAsset] = [:]
+    private static var missingAssetNames: Set<String> = []
+
+    static func visualAsset(named name: String) -> PetImportedVisualAsset? {
+        if let asset = assetsByName[name] {
+            return asset
+        }
+        guard !missingAssetNames.contains(name) else { return nil }
+
+        guard let url = PetResourceURLCache.url(named: name, withExtension: "png") else {
+            missingAssetNames.insert(name)
+            return nil
+        }
+
+        let asset = PetImportedVisualAsset(
+            kind: .stillImage,
+            imageURL: url,
+            frameURLs: []
+        )
+        assetsByName[name] = asset
+        return asset
     }
 }
 

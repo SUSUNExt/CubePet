@@ -244,7 +244,7 @@ struct PetCustomizationEditorView: View {
                 Picker(label(.eyeStyle), selection: eyeKindBinding) {
                     Text(label(.bigEyes)).tag(PetEyeModuleKind.catDefault)
                     Text(label(.smallBlackBlockEyes)).tag(PetEyeModuleKind.tracking)
-                    Text(label(.shibaWatercolorEyes)).tag(PetEyeModuleKind.shibaWatercolor)
+                    Text("柴犬水彩眼睛").tag(PetEyeModuleKind.shibaWatercolor)
                     Text(label(.happy)).tag(PetEyeModuleKind.happy)
                     Text(label(.scared)).tag(PetEyeModuleKind.scared)
                     Text(label(.sleeping)).tag(PetEyeModuleKind.sleeping)
@@ -252,10 +252,8 @@ struct PetCustomizationEditorView: View {
                     Text(label(.hungry)).tag(PetEyeModuleKind.hungry)
                 }
 
-                Picker(label(.eyeColor), selection: eyeColorBinding) {
-                    Text(label(.automatic)).tag(PetEyeColorMode.automatic)
-                    Text(label(.black)).tag(PetEyeColorMode.black)
-                    Text(label(.white)).tag(PetEyeColorMode.white)
+                if showsEyeColorControl {
+                    eyeColorControl
                 }
             }
         }
@@ -307,6 +305,25 @@ struct PetCustomizationEditorView: View {
         }
     }
 
+    private func detailSliderRow(
+        label key: PetCustomizationText,
+        value: Binding<Double>,
+        range: ClosedRange<Double>
+    ) -> some View {
+        HStack(spacing: 10) {
+            Text(label(key))
+                .lineLimit(1)
+                .frame(width: 108, alignment: .leading)
+
+            Slider(value: value, in: range, onEditingChanged: updateHistoryTransaction)
+
+            Text(value.wrappedValue, format: .number.precision(.fractionLength(2)))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 34, alignment: .trailing)
+        }
+    }
+
     private var eyeControls: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 8) {
@@ -333,11 +350,15 @@ struct PetCustomizationEditorView: View {
                     .buttonBorderShape(.roundedRectangle(radius: 5))
                     .editorButtonHoverFeedback(cornerRadius: 5)
                     .popover(isPresented: $isShowingEyeEditor, arrowEdge: .bottom) {
-                        eyeDetailEditor
+                        activeEyeDetailEditor
                     }
                 }
 
                 eyeTypeControl
+
+                if showsEyeColorControl {
+                    eyeColorControl
+                }
             }
         }
         .font(.callout)
@@ -358,6 +379,7 @@ struct PetCustomizationEditorView: View {
                         PetEyeModuleKind.catDefault,
                         .tracking,
                         .shibaWatercolor,
+                        .cookieBlackBean,
                         .happy,
                         .scared,
                         .sleeping
@@ -937,7 +959,7 @@ struct PetCustomizationEditorView: View {
         for source: PetBaseVisualSource
     ) -> PetImportedVisualAsset? {
         guard case let .bundledAsset(name) = source,
-              let url = Bundle.main.url(forResource: name, withExtension: "png")
+              let url = PetResourceURLCache.url(named: name, withExtension: "png")
         else { return nil }
 
         return PetImportedVisualAsset(
@@ -953,9 +975,10 @@ struct PetCustomizationEditorView: View {
         customEyeAsset: PetImportedVisualAsset?
     ) -> some View {
         switch editingPet?.visualKind ?? .cube {
-        case .cube:
+        case .cube, .cookie:
             CubePetView(
                 color: Color(nsColor: editingSkin?.color ?? .black),
+                skinStyle: CubeSkinStyle(skinID: editingSkin?.id ?? PetCatalog.cube.skins[0].id),
                 expression: expression,
                 isBlinking: false,
                 gazeOffset: .zero,
@@ -982,15 +1005,12 @@ struct PetCustomizationEditorView: View {
                 visualConfiguration: draft,
                 customEyeAsset: customEyeAsset
             )
-        case .shiba:
-            ShibaPetView(
-                expression: expression,
-                isBlinking: false,
-                gazeOffset: .zero,
-                mouthOpen: previewMouthOpen,
-                visualConfiguration: draft,
-                customEyeAsset: customEyeAsset
-            )
+        case .dog:
+            Image(systemName: "dog.fill")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.brown)
+                .padding(12)
         }
     }
 
@@ -1137,7 +1157,9 @@ struct PetCustomizationEditorView: View {
         case .expressionDriven: label(.bigEyes)
         case .catDefault: label(.bigEyes)
         case .tracking: label(.smallBlackBlockEyes)
-        case .shibaWatercolor: label(.shibaWatercolorEyes)
+        case .trackingBlack: label(.smallBlackBlockEyesBlack)
+        case .shibaWatercolor: "柴犬水彩眼睛"
+        case .cookieBlackBean: label(.cookieBlackBeanEyes)
         case .happy: label(.happy)
         case .scared: label(.scared)
         case .sleeping: label(.sleeping)
@@ -1158,13 +1180,59 @@ struct PetCustomizationEditorView: View {
 
     private var eyeColorBinding: Binding<PetEyeColorMode> {
         Binding(
-            get: { currentStateConfiguration.eyes?.resolvedColorMode ?? .automatic },
+            get: {
+                currentStateConfiguration.eyes?.colorSelectionMode(
+                    automaticColor: automaticEyeColorSelection
+                ) ?? automaticEyeColorSelection
+            },
             set: { colorMode in
                 updateCurrentEyes {
-                    $0.colorMode = colorMode == .automatic ? nil : colorMode
+                    $0.colorMode = colorMode
                 }
             }
         )
+    }
+
+    /// The color picker has no automatic option. Match its selected segment to
+    /// the visible ink used by the current pet before a user picks a color.
+    private var automaticEyeColorSelection: PetEyeColorMode {
+        switch editingPet?.visualKind ?? .cube {
+        case .cat:
+            let usesWhiteExpressionInk = ["cat.black", "cat.siamese"].contains(
+                editingSkin?.id
+            ) && [.happy, .scared, .sleeping].contains(selectedState)
+            return usesWhiteExpressionInk ? .white : .black
+        case .frog:
+            return .black
+        case .cube, .cookie:
+            return .white
+        case .dog:
+            return .black
+        }
+    }
+
+    private var showsEyeColorControl: Bool {
+        guard let eyes = currentStateConfiguration.eyes,
+              eyes.customAssetID == nil
+        else { return false }
+        return eyes.supportsEyeColorSelection
+    }
+
+    private var eyeColorControl: some View {
+        HStack(spacing: 6) {
+            Text(label(.eyeColor))
+                .frame(width: 68, alignment: .leading)
+
+            Picker("", selection: eyeColorBinding) {
+                Text(label(.black)).tag(PetEyeColorMode.black)
+                Text(label(.white)).tag(PetEyeColorMode.white)
+                Text(label(.brown)).tag(PetEyeColorMode.brown)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(width: 168)
+            .controlSize(.small)
+        }
     }
 
     private var eyeScaleBinding: Binding<Double> {
@@ -1188,6 +1256,26 @@ struct PetCustomizationEditorView: View {
             get: { currentStateConfiguration.eyes?.resolvedPupilScale ?? 1 },
             set: { value in
                 updateCurrentEyes { $0.pupilScale = value }
+            }
+        )
+    }
+
+    private var singleColorEyeSizeBinding: Binding<Double> {
+        Binding(
+            get: {
+                guard let eyes = currentStateConfiguration.eyes else { return 1 }
+                return eyes.kind == .cookieBlackBean
+                    ? eyes.resolvedPupilScale
+                    : eyes.resolvedOuterEyeScale
+            },
+            set: { value in
+                updateCurrentEyes {
+                    if $0.kind == .cookieBlackBean {
+                        $0.pupilScale = value
+                    } else {
+                        $0.outerEyeScale = value
+                    }
+                }
             }
         )
     }
@@ -1348,6 +1436,13 @@ struct PetCustomizationEditorView: View {
         updateCurrentEyes {
             $0.kind = kind
             $0.customAssetID = nil
+            if kind.supportsEyeColorSelection {
+                $0.colorMode = $0.colorSelectionMode(
+                    automaticColor: automaticEyeColorSelection
+                )
+            } else {
+                $0.colorMode = nil
+            }
         }
     }
 
@@ -1715,17 +1810,47 @@ struct PetCustomizationEditorView: View {
         .frame(width: 290)
     }
 
-    private var eyeDetailEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sliderRow(label: .whiteSize, value: outerEyeScaleBinding, range: 0.5...2)
-            sliderRow(label: .pupilSize, value: pupilScaleBinding, range: 0.5...2)
-            sliderRow(label: .pupilSpacing, value: pupilSpacingBinding, range: -3...3)
-            sliderRow(label: .pupilGazeScale, value: pupilGazeScaleBinding, range: 0...1)
-            sliderRow(label: .spacing, value: eyeSpacingBinding, range: -10...30)
+    @ViewBuilder
+    private var activeEyeDetailEditor: some View {
+        if currentStateConfiguration.eyes?.usesSingleColorEyeControls == true {
+            singleColorEyeDetailEditor
+        } else {
+            dualColorEyeDetailEditor
+        }
+    }
+
+    private var singleColorEyeDetailEditor: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(label(.eyeDetailSettings))
+                .font(.headline)
+
+            Divider()
+
+            detailSliderRow(label: .eyeSize, value: singleColorEyeSizeBinding, range: 0.5...2)
+            detailSliderRow(label: .eyeMovement, value: pupilGazeScaleBinding, range: 0...1)
+            detailSliderRow(label: .spacing, value: eyeSpacingBinding, range: -10...30)
         }
         .font(.callout)
-        .padding()
-        .frame(width: 280)
+        .padding(16)
+        .frame(width: 350)
+    }
+
+    private var dualColorEyeDetailEditor: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(label(.eyeDetailSettings))
+                .font(.headline)
+
+            Divider()
+
+            detailSliderRow(label: .whiteSize, value: outerEyeScaleBinding, range: 0.5...2)
+            detailSliderRow(label: .pupilSize, value: pupilScaleBinding, range: 0.5...2)
+            detailSliderRow(label: .pupilSpacing, value: pupilSpacingBinding, range: -3...3)
+            detailSliderRow(label: .pupilGazeScale, value: pupilGazeScaleBinding, range: 0...1)
+            detailSliderRow(label: .spacing, value: eyeSpacingBinding, range: -10...30)
+        }
+        .font(.callout)
+        .padding(16)
+        .frame(width: 350)
     }
 
     private func frameThumbnail(url: URL, index: Int) -> some View {

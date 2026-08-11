@@ -12,19 +12,20 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
     private var activeSharingService: NSSharingService?
     private var aboutWindowController: AboutWindowController?
     private var petCustomizationWindowController: PetCustomizationWindowController?
+    private var petMenuWindowController: PetMenuWindowController?
     private var shortcutSettingsWindowController: ShortcutSettingsWindowController?
     private var permissionSettingsWindowController: PermissionSettingsWindowController?
     private var statusItemController: StatusItemController?
     private var globalShortcutController: GlobalShortcutController?
     private var ageStore: PetAgeStore?
     private var progressStore: PetProgressStore?
+    private var inventoryStore: PetInventoryStore?
     private var hungerStore: PetHungerStore?
     private var customizationStore: PetCustomizationStore?
     private var featureEntitlementStore: FeatureEntitlementStore?
     private let feedSettings = FeedSettings()
     private let languageSettings = LanguageSettings()
     private let appearanceSettings = PetAppearanceSettings()
-    private let menuStyleSettings = MenuStyleSettings()
     private let menuFontSettings = MenuFontSettings()
     private let shortcutSettings = ShortcutSettings()
     private let launchAtLoginController = LaunchAtLoginController()
@@ -46,6 +47,8 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             selectedSkinID: appearanceSettings.selectedSkinID
         )
         self.progressStore = progressStore
+        let inventoryStore = PetInventoryStore()
+        self.inventoryStore = inventoryStore
         progressStore.start { [weak ageStore] in
             ageStore?.totalRuntime ?? 0
         }
@@ -66,6 +69,7 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             state: petState,
             motionState: motionState,
             hungerStore: hungerStore,
+            inventoryStore: inventoryStore,
             appearanceSettings: appearanceSettings,
             customizationStore: customizationStore,
             languageSettings: languageSettings
@@ -117,34 +121,16 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
                 return true
             }
 
-            if let customPet = customizationStore.customPet(id: appearanceSettings.selectedPetID) {
-                return customPet.visualConfiguration.resolvedBottomPetEnabled
-            }
-
-            let official = PetVisualDefaults.configuration(
+            return customizationStore.resolvedVisualConfiguration(
                 petID: appearanceSettings.selectedPetID,
                 skinID: appearanceSettings.selectedSkinID
-            )
-            return customizationStore.visualConfiguration(
-                petID: appearanceSettings.selectedPetID,
-                skinID: appearanceSettings.selectedSkinID,
-                official: official
             )
             .resolvedBottomPetEnabled
         }
         physicsController.isGravityEnabled = { [appearanceSettings = self.appearanceSettings, customizationStore] in
-            if let customPet = customizationStore.customPet(id: appearanceSettings.selectedPetID) {
-                return customPet.visualConfiguration.resolvedGravityEnabled
-            }
-
-            let official = PetVisualDefaults.configuration(
+            customizationStore.resolvedVisualConfiguration(
                 petID: appearanceSettings.selectedPetID,
                 skinID: appearanceSettings.selectedSkinID
-            )
-            return customizationStore.visualConfiguration(
-                petID: appearanceSettings.selectedPetID,
-                skinID: appearanceSettings.selectedSkinID,
-                official: official
             )
             .resolvedGravityEnabled
         }
@@ -184,6 +170,15 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             languageSettings: languageSettings
         )
         self.petCustomizationWindowController = petCustomizationWindowController
+        let petMenuWindowController = PetMenuWindowController(
+            progressStore: progressStore,
+            inventoryStore: inventoryStore,
+            languageSettings: languageSettings,
+            useFood: { [weak self] item in
+                self?.useInventoryFood(item) == true
+            }
+        )
+        self.petMenuWindowController = petMenuWindowController
         let updateAvailability = AppUpdateAvailability()
         let permissionSettingsWindowController = PermissionSettingsWindowController(
             languageSettings: languageSettings
@@ -196,7 +191,6 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             progressStore: progressStore,
             hungerStore: hungerStore,
             appearanceSettings: appearanceSettings,
-            menuStyleSettings: menuStyleSettings,
             menuFontSettings: menuFontSettings,
             customizationStore: customizationStore,
             featureEntitlementStore: featureEntitlementStore,
@@ -205,6 +199,9 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
             updateAvailability: updateAvailability,
             onShowAbout: { [weak aboutWindowController] in
                 aboutWindowController?.show()
+            },
+            onShowPetMenu: { [weak petMenuWindowController] in
+                petMenuWindowController?.show()
             },
             onShowPetCustomization: { [weak petCustomizationWindowController] in
                 petCustomizationWindowController?.show()
@@ -276,6 +273,32 @@ final class MacBookPetApp: NSObject, NSApplicationDelegate, NSSharingServiceDele
                 allowUnownedPet: isUsableCustomPet
             )
         }
+    }
+
+    @discardableResult
+    @MainActor
+    private func useInventoryFood(_ item: PetShopItemDefinition) -> Bool {
+        guard
+            let inventoryStore,
+            let progressStore,
+            let hungerStore
+        else { return false }
+
+        let petID = appearanceSettings.selectedPetID
+        let isUsableCustomPet = featureEntitlementStore?.isUnlocked(.petCustomization) == true
+            && customizationStore?.customPet(id: petID) != nil
+        guard let result = inventoryStore.useFood(
+            item,
+            for: petID,
+            allowUnownedPet: isUsableCustomPet,
+            progressStore: progressStore,
+            hungerStore: hungerStore
+        ) else { return false }
+
+        petState?.reactToFeed()
+        petMotionState?.showExperienceGain(result.experience)
+        petMotionState?.showSatietyGain(result.satiety)
+        return true
     }
 
     @discardableResult

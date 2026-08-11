@@ -16,7 +16,7 @@ final class AppUpdateAvailability: ObservableObject {
     init(currentVersion: String? = nil) {
         self.currentVersion = currentVersion
             ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
-            ?? "0.9.95"
+            ?? "1.0.0"
     }
 
     func startCheckingForUpdates() {

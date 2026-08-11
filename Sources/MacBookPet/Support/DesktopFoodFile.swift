@@ -33,7 +33,7 @@ enum DesktopFoodFile {
         let fileURL = availableURL(named: displayName, in: desktopURL, fileManager: fileManager)
         try data.write(to: fileURL, options: .withoutOverwriting)
 
-        if !NSWorkspace.shared.setIcon(foodIcon(for: food.name), forFile: fileURL.path) {
+        if !NSWorkspace.shared.setIcon(icon(for: food.name), forFile: fileURL.path) {
             NSLog("MacBookPet could not set the food icon for %@", fileURL.path)
         }
 
@@ -84,7 +84,7 @@ enum DesktopFoodFile {
         }
     }
 
-    private static func foodIcon(for name: FoodName) -> NSImage {
+    static func icon(for name: FoodName) -> NSImage {
         switch name {
         case .smallCookie:
             cookieIcon()
@@ -92,7 +92,23 @@ enum DesktopFoodFile {
             energyBarIcon()
         case .petCola:
             petColaIcon()
+        case .fishShapedPastry:
+            bundledIcon(named: "FishShapedPastry", fallback: cookieIcon)
+        case .puddingCup:
+            bundledIcon(named: "PuddingCup", fallback: energyBarIcon)
+        case .threeColorDango:
+            bundledIcon(named: "ThreeColorDango", fallback: cookieIcon)
         }
+    }
+
+    private static func bundledIcon(named resourceName: String, fallback: () -> NSImage) -> NSImage {
+        if let url = Bundle.main.url(forResource: resourceName, withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            image.isTemplate = false
+            return image
+        }
+
+        return fallback()
     }
 
     private static func makeIcon(drawing: () -> Void) -> NSImage {
@@ -184,40 +200,42 @@ enum DesktopFoodFile {
     }
 
     private static func petColaIcon() -> NSImage {
-        makeIcon {
-            let outline = NSColor(calibratedRed: 0.17, green: 0.12, blue: 0.15, alpha: 1)
-            let bottle = NSBezierPath(roundedRect: NSRect(x: 126, y: 56, width: 260, height: 344), xRadius: 62, yRadius: 62)
-            outline.setFill()
-            bottle.fill()
+        bundledIcon(named: "PetCola") {
+            makeIcon {
+                let outline = NSColor(calibratedRed: 0.17, green: 0.12, blue: 0.15, alpha: 1)
+                let bottle = NSBezierPath(roundedRect: NSRect(x: 126, y: 56, width: 260, height: 344), xRadius: 62, yRadius: 62)
+                outline.setFill()
+                bottle.fill()
 
-            let label = NSRect(x: 144, y: 128, width: 224, height: 178)
-            NSColor(calibratedRed: 0.95, green: 0.34, blue: 0.31, alpha: 1).setFill()
-            NSBezierPath(roundedRect: label, xRadius: 38, yRadius: 38).fill()
+                let label = NSRect(x: 144, y: 128, width: 224, height: 178)
+                NSColor(calibratedRed: 0.95, green: 0.34, blue: 0.31, alpha: 1).setFill()
+                NSBezierPath(roundedRect: label, xRadius: 38, yRadius: 38).fill()
 
-            NSColor(calibratedRed: 1.0, green: 0.84, blue: 0.30, alpha: 1).setFill()
-            NSBezierPath(roundedRect: NSRect(x: 177, y: 386, width: 158, height: 48), xRadius: 18, yRadius: 18).fill()
-            outline.setStroke()
-            let capLine = NSBezierPath()
-            capLine.move(to: NSPoint(x: 190, y: 410))
-            capLine.line(to: NSPoint(x: 322, y: 410))
-            capLine.lineWidth = 8
-            capLine.stroke()
+                NSColor(calibratedRed: 1.0, green: 0.84, blue: 0.30, alpha: 1).setFill()
+                NSBezierPath(roundedRect: NSRect(x: 177, y: 386, width: 158, height: 48), xRadius: 18, yRadius: 18).fill()
+                outline.setStroke()
+                let capLine = NSBezierPath()
+                capLine.move(to: NSPoint(x: 190, y: 410))
+                capLine.line(to: NSPoint(x: 322, y: 410))
+                capLine.lineWidth = 8
+                capLine.stroke()
 
-            NSColor.white.setFill()
-            let paw = NSBezierPath()
-            paw.appendOval(in: NSRect(x: 211, y: 164, width: 92, height: 78))
-            for toe in [NSRect(x: 187, y: 236, width: 40, height: 48), NSRect(x: 236, y: 254, width: 40, height: 50), NSRect(x: 285, y: 236, width: 40, height: 48)] {
-                paw.appendOval(in: toe)
+                NSColor.white.setFill()
+                let paw = NSBezierPath()
+                paw.appendOval(in: NSRect(x: 211, y: 164, width: 92, height: 78))
+                for toe in [NSRect(x: 187, y: 236, width: 40, height: 48), NSRect(x: 236, y: 254, width: 40, height: 50), NSRect(x: 285, y: 236, width: 40, height: 48)] {
+                    paw.appendOval(in: toe)
+                }
+                paw.fill()
+
+                NSColor(calibratedRed: 1.0, green: 0.62, blue: 0.55, alpha: 0.95).setStroke()
+                let shine = NSBezierPath()
+                shine.move(to: NSPoint(x: 158, y: 334))
+                shine.line(to: NSPoint(x: 185, y: 362))
+                shine.lineWidth = 14
+                shine.lineCapStyle = .round
+                shine.stroke()
             }
-            paw.fill()
-
-            NSColor(calibratedRed: 1.0, green: 0.62, blue: 0.55, alpha: 0.95).setStroke()
-            let shine = NSBezierPath()
-            shine.move(to: NSPoint(x: 158, y: 334))
-            shine.line(to: NSPoint(x: 185, y: 362))
-            shine.lineWidth = 14
-            shine.lineCapStyle = .round
-            shine.stroke()
         }
     }
 }

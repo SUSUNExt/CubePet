@@ -2,14 +2,31 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="$ROOT_DIR/dist"
+ARCHITECTURE="${ARCHITECTURE:-$(uname -m)}"
+if [[ $# -gt 0 ]]; then
+  if [[ "$1" != "--arch" || $# -ne 2 ]]; then
+    echo "usage: $0 [--arch arm64|x86_64]" >&2
+    exit 2
+  fi
+  ARCHITECTURE="$2"
+fi
+
+case "$ARCHITECTURE" in
+  arm64|x86_64)
+    ;;
+  *)
+    echo "unsupported architecture: $ARCHITECTURE (expected arm64 or x86_64)" >&2
+    exit 2
+    ;;
+esac
+
+DIST_DIR="$ROOT_DIR/dist/$ARCHITECTURE"
 APP_BUNDLE="$DIST_DIR/MacBookPet.app"
 STAGING_DIR="$DIST_DIR/dmg-staging"
 
-"$ROOT_DIR/script/build_and_run.sh" --release-app >/dev/null
+"$ROOT_DIR/script/build_and_run.sh" --release-app --arch "$ARCHITECTURE" >/dev/null
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Contents/Info.plist")"
-ARCHITECTURE="$(uname -m)"
 DMG_PATH="$DIST_DIR/CubePet-$VERSION-$ARCHITECTURE.dmg"
 VOLUME_NAME="CubePet $VERSION"
 IDENTITY="${CODESIGN_IDENTITY:--}"

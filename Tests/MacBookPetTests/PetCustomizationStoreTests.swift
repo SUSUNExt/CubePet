@@ -3,6 +3,196 @@ import XCTest
 @testable import MacBookPet
 
 final class PetCustomizationStoreTests: XCTestCase {
+    func testCubeSpecialSkinsAreAvailableForImmediatePreview() {
+        let ice = PetCatalog.cube.skin(id: "cube.ice")
+        let rainbow = PetCatalog.cube.skin(id: "cube.rainbow")
+        let ice2 = PetCatalog.cube.skin(id: "cube.ice2")
+        let rainbow2 = PetCatalog.cube.skin(id: "cube.rainbow2")
+
+        XCTAssertEqual(ice?.unlockLevel, 1)
+        XCTAssertEqual(ice?.price, 0)
+        XCTAssertEqual(rainbow?.unlockLevel, 1)
+        XCTAssertEqual(rainbow?.price, 0)
+        XCTAssertEqual(ice2?.unlockLevel, 1)
+        XCTAssertEqual(ice2?.price, 0)
+        XCTAssertEqual(rainbow2?.unlockLevel, 1)
+        XCTAssertEqual(rainbow2?.price, 0)
+        XCTAssertEqual(CubeSkinStyle(skinID: "cube.ice"), .ice)
+        XCTAssertEqual(CubeSkinStyle(skinID: "cube.rainbow"), .rainbow)
+        XCTAssertEqual(CubeSkinStyle(skinID: "cube.ice2"), .ice2)
+        XCTAssertEqual(CubeSkinStyle(skinID: "cube.rainbow2"), .rainbow2)
+    }
+
+    func testLittleCookieUsesTheExtractedBlackBeanEyeModule() {
+        XCTAssertEqual(PetCatalog.cookie.name, .cookie)
+        XCTAssertEqual(PetCatalog.cookie.skins.map(\.name), [.cookieClassic])
+
+        let configuration = PetVisualDefaults.configuration(
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic"
+        )
+        let normal = configuration.configuration(for: .normal)
+
+        XCTAssertEqual(normal.base, .bundledAsset(name: "CookiePetFaceless"))
+        XCTAssertEqual(normal.eyes?.kind, .cookieBlackBean)
+        XCTAssertEqual(normal.eyes?.center, NormalizedVisualPoint(x: 0.5, y: 0.44))
+        XCTAssertEqual(normal.eyes?.resolvedPupilScale, 0.5)
+        XCTAssertEqual(normal.eyes?.resolvedPupilGazeScale, 0.27377158717105265)
+        XCTAssertEqual(normal.eyes?.spacing, -1.22080592105263)
+        XCTAssertTrue(normal.eyes?.followsMouse(for: .calm) ?? false)
+        XCTAssertTrue(normal.eyes?.usesSingleColorEyeControls ?? false)
+    }
+
+    func testLittleCookieOfficialDefaultsMatchSavedStateLayouts() {
+        let configuration = PetVisualDefaults.configuration(
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic"
+        )
+
+        let happy = configuration.configuration(for: .happy).eyes
+        XCTAssertEqual(happy?.kind, .happy)
+        XCTAssertEqual(happy?.center, NormalizedVisualPoint(x: 0.5058791035353535, y: 0.41216303661616166))
+        XCTAssertEqual(happy?.scale, 0.6333666424418604)
+        XCTAssertEqual(happy?.spacing, 11.96278782894737)
+        XCTAssertEqual(happy?.resolvedColorMode, .brown)
+
+        let scared = configuration.configuration(for: .scared).eyes
+        XCTAssertEqual(scared?.kind, .scared)
+        XCTAssertEqual(scared?.spacing, 12.879607681888547)
+        XCTAssertEqual(scared?.resolvedColorMode, .brown)
+
+        let sleeping = configuration.configuration(for: .sleeping).eyes
+        XCTAssertEqual(sleeping?.kind, .sleeping)
+        XCTAssertEqual(sleeping?.center, NormalizedVisualPoint(x: 0.5098248106060606, y: 0.3701270517676768))
+        XCTAssertEqual(sleeping?.scale, 0.6694222383720931)
+        XCTAssertEqual(sleeping?.spacing, 8.169117647058826)
+        XCTAssertEqual(sleeping?.resolvedColorMode, .brown)
+
+        XCTAssertEqual(configuration.configuration(for: .eating).eyes?.kind, .happy)
+        XCTAssertEqual(configuration.configuration(for: .eating).eyes?.spacing, 12.879607681888547)
+        XCTAssertEqual(configuration.configuration(for: .hungry).eyes?.kind, .happy)
+        XCTAssertEqual(configuration.configuration(for: .hungry).eyes?.spacing, 12.879607681888547)
+    }
+
+    @MainActor
+    func testLegacyCookieBlackBeanSettingsRestoreVisibleMouseFollowing() throws {
+        let fileManager = FileManager.default
+        let temporaryRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? fileManager.removeItem(at: temporaryRoot) }
+
+        var legacyConfiguration = PetVisualDefaults.cookie
+        var normal = legacyConfiguration.configuration(for: .normal)
+        normal.eyes?.outerEyeScale = 0.8
+        normal.eyes?.pupilSpacing = -1
+        normal.eyes?.pupilGazeScale = 0.02
+        legacyConfiguration.setConfiguration(normal, for: .normal)
+
+        let configurationData = try JSONEncoder().encode(legacyConfiguration)
+        let configurationObject = try JSONSerialization.jsonObject(with: configurationData)
+        let document: [String: Any] = [
+            "schemaVersion": 3,
+            "visualOverrides": ["cookie::cookie.classic": configurationObject],
+            "customPets": [],
+            "eyePresets": [],
+            "musicReactionSettings": [
+                "isEnabled": true,
+                "isSwayingEnabled": true,
+                "areMusicNotesEnabled": true
+            ]
+        ]
+        let documentData = try JSONSerialization.data(withJSONObject: document)
+        try fileManager.createDirectory(at: temporaryRoot, withIntermediateDirectories: true)
+        try documentData.write(to: temporaryRoot.appendingPathComponent("customization.json"))
+
+        let store = PetCustomizationStore(fileManager: fileManager, customRootURL: temporaryRoot)
+        let eyes = try XCTUnwrap(
+            store.visualConfiguration(
+                petID: PetCatalog.cookie.id,
+                skinID: "cookie.classic",
+                official: PetVisualDefaults.cookie
+            ).configuration(for: .normal).eyes
+        )
+
+        XCTAssertEqual(eyes.resolvedPupilGazeScale, 1)
+        XCTAssertNil(eyes.outerEyeScale)
+        XCTAssertNil(eyes.pupilSpacing)
+    }
+
+    @MainActor
+    func testLittleCookieEyeChoicesPersistIndependentlyForEachState() throws {
+        let fileManager = FileManager.default
+        let temporaryRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? fileManager.removeItem(at: temporaryRoot) }
+
+        let store = PetCustomizationStore(fileManager: fileManager, customRootURL: temporaryRoot)
+        var override = PetVisualDefaults.cookie
+        var normal = override.configuration(for: .normal)
+        normal.eyes?.kind = .catDefault
+        override.setConfiguration(normal, for: .normal)
+
+        var happy = override.configuration(for: .happy)
+        happy.eyes?.kind = .happy
+        override.setConfiguration(happy, for: .happy)
+
+        var scared = override.configuration(for: .scared)
+        scared.eyes?.kind = .scared
+        override.setConfiguration(scared, for: .scared)
+        try store.saveVisualOverride(
+            override,
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic"
+        )
+
+        let resolved = store.visualConfiguration(
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic",
+            official: PetVisualDefaults.cookie
+        )
+        XCTAssertEqual(resolved.configuration(for: .normal).eyes?.kind, .catDefault)
+        XCTAssertEqual(resolved.configuration(for: .happy).eyes?.kind, .happy)
+        XCTAssertEqual(resolved.configuration(for: .scared).eyes?.kind, .scared)
+        XCTAssertEqual(resolved.configuration(for: .eating).eyes?.kind, .happy)
+        XCTAssertEqual(resolved.configuration(for: .hungry).eyes?.kind, .happy)
+        XCTAssertEqual(resolved.configuration(for: .sleeping).eyes?.kind, .sleeping)
+    }
+
+    @MainActor
+    func testLittleCookieSleepingEyesPersistIndependentlyFromAwakeEyes() throws {
+        let fileManager = FileManager.default
+        let temporaryRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? fileManager.removeItem(at: temporaryRoot) }
+
+        let store = PetCustomizationStore(fileManager: fileManager, customRootURL: temporaryRoot)
+        var override = PetVisualDefaults.cookie
+        var sleeping = override.configuration(for: .sleeping)
+        sleeping.eyes = PetEyeModuleConfiguration(
+            kind: .sleeping,
+            center: NormalizedVisualPoint(x: 0.42, y: 0.37),
+            spacing: 3
+        )
+        override.setConfiguration(sleeping, for: .sleeping)
+        try store.saveVisualOverride(
+            override,
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic"
+        )
+
+        let resolved = store.visualConfiguration(
+            petID: PetCatalog.cookie.id,
+            skinID: "cookie.classic",
+            official: PetVisualDefaults.cookie
+        )
+        XCTAssertEqual(resolved.configuration(for: .normal).eyes?.kind, .cookieBlackBean)
+        XCTAssertEqual(resolved.configuration(for: .sleeping).eyes?.kind, .sleeping)
+        XCTAssertEqual(
+            resolved.configuration(for: .sleeping).eyes?.center,
+            NormalizedVisualPoint(x: 0.42, y: 0.37)
+        )
+    }
+
     @MainActor
     func testSystemMetricsMonitorStopsSamplingWhenStopped() {
         let monitor = SystemMetricsMonitor()
@@ -523,7 +713,7 @@ final class PetCustomizationStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testAllBuiltInPetsAreUnlockedButPaidCatSkinsStayLocked() {
+    func testFreeBuiltInPetsAreUnlockedButPaidPetAndSkinsStayLocked() {
         let suiteName = "PetProgressStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -535,9 +725,12 @@ final class PetCustomizationStoreTests: XCTestCase {
             defaults: defaults
         )
 
-        for pet in PetCatalog.pets {
-            XCTAssertTrue(store.ownsPet(pet.id))
-        }
+        XCTAssertTrue(store.ownsPet(PetCatalog.cube.id))
+        XCTAssertFalse(store.ownsPet(PetCatalog.frog.id))
+        XCTAssertTrue(store.ownsPet(PetCatalog.cat.id))
+        XCTAssertTrue(store.ownsPet(PetCatalog.dog.id))
+        XCTAssertTrue(store.ownsPet(PetCatalog.cookie.id))
+        XCTAssertFalse(store.ownsSkin("frog.classic"))
         XCTAssertTrue(store.ownsSkin("cat.classic"))
         XCTAssertTrue(store.ownsSkin("cat.yellow"))
         XCTAssertFalse(store.ownsSkin("cat.grayTabby"))
@@ -592,7 +785,7 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertFalse(configuration.resolvedMusicSwayingEnabled)
     }
 
-    func testShibaOfficialDefaultsMatchApprovedCustomPetPlacement() throws {
+    func testDogIncludesShibaAndBeagleSkins() throws {
         XCTAssertEqual(PetCatalog.dog.name, .dog)
         XCTAssertEqual(PetCatalog.dog.skins.map(\.name), [.shibaClassic, .beagle])
 
@@ -603,42 +796,30 @@ final class PetCustomizationStoreTests: XCTestCase {
         let normalEyes = try XCTUnwrap(configuration.configuration(for: .normal).eyes)
 
         XCTAssertEqual(normalEyes.kind, .shibaWatercolor)
-        XCTAssertEqual(normalEyes.center.x, 0.4963699494949495)
-        XCTAssertEqual(normalEyes.center.y, 0.3116911300505051)
-        XCTAssertEqual(normalEyes.scale, 0.5)
-        XCTAssertEqual(normalEyes.spacing, 3.676809210526315)
-        XCTAssertEqual(normalEyes.resolvedPupilScale, 0.5482884457236842)
-        XCTAssertEqual(
-            configuration.configuration(for: .normal).baseOffset,
-            NormalizedVisualOffset(x: 0.0012866436100131755, y: 0.015014273166447073)
+        XCTAssertEqual(configuration.configuration(for: .normal).base, .bundledAsset(name: "ShibaPet"))
+    }
+
+    @MainActor
+    func testLegacyShibaOverrideKeepsItsEditsAndRestoresBundledArtwork() throws {
+        let fileManager = FileManager.default
+        let temporaryRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? fileManager.removeItem(at: temporaryRoot) }
+
+        let store = PetCustomizationStore(fileManager: fileManager, customRootURL: temporaryRoot)
+        var legacy = PetVisualConfiguration(
+            states: [.normal: PetStateVisualConfiguration(base: .officialSkin, eyes: nil)]
         )
-        XCTAssertEqual(
-            configuration.configuration(for: .happy).baseOffset,
-            NormalizedVisualOffset(x: 0, y: 0.015151515151515152)
+        legacy.setBottomPetEnabled(true)
+        try store.saveVisualOverride(legacy, petID: PetCatalog.dog.id, skinID: "dog.shiba")
+
+        let restored = store.visualConfiguration(
+            petID: PetCatalog.dog.id,
+            skinID: "dog.shiba",
+            official: PetVisualDefaults.shiba
         )
-        XCTAssertEqual(
-            configuration.configuration(for: .scared).baseOffset,
-            NormalizedVisualOffset(x: 0, y: 0.030303030303030304)
-        )
-        XCTAssertEqual(
-            configuration.configuration(for: .eating).baseOffset,
-            NormalizedVisualOffset(x: 0, y: 0.015151515151515152)
-        )
-        XCTAssertEqual(
-            configuration.configuration(for: .hungry).baseOffset,
-            NormalizedVisualOffset(x: 0, y: 0.06060606060606061)
-        )
-        XCTAssertEqual(configuration.configuration(for: .normal).resolvedBaseScale, 1.15)
-        XCTAssertEqual(configuration.configuration(for: .happy).resolvedBaseScale, 1.15)
-        XCTAssertEqual(configuration.configuration(for: .scared).resolvedBaseScale, 1.15)
-        XCTAssertEqual(configuration.configuration(for: .sleeping).resolvedBaseScale, 1.15)
-        XCTAssertEqual(configuration.configuration(for: .eating).resolvedBaseScale, 1.15)
-        XCTAssertEqual(configuration.configuration(for: .hungry).resolvedBaseScale, 1.1)
-        XCTAssertNil(configuration.configuration(for: .happy).eyes)
-        XCTAssertNil(configuration.configuration(for: .scared).eyes)
-        XCTAssertNil(configuration.configuration(for: .sleeping).eyes)
-        XCTAssertNil(configuration.configuration(for: .eating).eyes)
-        XCTAssertNil(configuration.configuration(for: .hungry).eyes)
+        XCTAssertEqual(restored.configuration(for: .normal).base, .bundledAsset(name: "ShibaPet"))
+        XCTAssertTrue(restored.resolvedBottomPetEnabled)
     }
 
     func testBeagleOfficialDefaultsMatchApprovedCustomPetLayout() throws {
@@ -848,11 +1029,63 @@ final class PetCustomizationStoreTests: XCTestCase {
         )
     }
 
+    func testSleepingDecorationVisibilityKeepsOnlyRequestedPetsVisible() {
+        XCTAssertTrue(
+            PetView.decorationsAreVisible(
+                petID: PetCatalog.cube.id,
+                skinID: "cube.classic",
+                expression: .sleeping
+            )
+        )
+        XCTAssertTrue(
+            PetView.decorationsAreVisible(
+                petID: PetCatalog.frog.id,
+                skinID: "frog.classic",
+                expression: .sleeping
+            )
+        )
+        XCTAssertTrue(
+            PetView.decorationsAreVisible(
+                petID: PetCatalog.cat.id,
+                skinID: "cat.yellow",
+                expression: .sleeping
+            )
+        )
+
+        let petsThatHideSleepingDecorations = [
+            (PetCatalog.cat.id, "cat.classic"),
+            (PetCatalog.dog.id, "dog.shiba"),
+            (PetCatalog.cookie.id, "cookie.classic"),
+            ("custom:test", "custom:test")
+        ]
+        for (petID, skinID) in petsThatHideSleepingDecorations {
+            XCTAssertFalse(
+                PetView.decorationsAreVisible(
+                    petID: petID,
+                    skinID: skinID,
+                    expression: .sleeping
+                )
+            )
+            XCTAssertTrue(
+                PetView.decorationsAreVisible(
+                    petID: petID,
+                    skinID: skinID,
+                    expression: .calm
+                )
+            )
+        }
+    }
+
     func testFoodSatietyIncreasesWithPrice() {
         XCTAssertEqual(ShopCatalog.food(id: "food.smallCookie")?.satiety, 18)
         XCTAssertEqual(ShopCatalog.food(id: "food.energyBar")?.satiety, 38)
         XCTAssertEqual(ShopCatalog.food(id: "food.nutritionCan")?.satiety, 75)
-        XCTAssertTrue(zip(ShopCatalog.foods, ShopCatalog.foods.dropFirst()).allSatisfy { cheaper, pricier in
+        XCTAssertEqual(ShopCatalog.food(id: "food.fishShapedPastry")?.satiety, 30)
+        XCTAssertEqual(ShopCatalog.food(id: "food.puddingCup")?.satiety, 45)
+        XCTAssertEqual(ShopCatalog.food(id: "food.threeColorDango")?.satiety, 56)
+
+        let foodsByPrice = ShopCatalog.foods.sorted { $0.price < $1.price }
+        XCTAssertTrue(zip(foodsByPrice, foodsByPrice.dropFirst()).allSatisfy { cheaper, pricier in
             cheaper.price < pricier.price && cheaper.satiety < pricier.satiety
         })
     }
@@ -1046,13 +1279,54 @@ final class PetCustomizationStoreTests: XCTestCase {
         XCTAssertTrue(configuration.allowsBlinking)
     }
 
-    func testShibaWatercolorEyeModuleUsesItsDedicatedBlinkBehavior() {
-        let configuration = PetEyeModuleConfiguration(kind: .shibaWatercolor)
+    func testBlackSmallBlockEyeModuleKeepsTrackingGeometry() {
+        let configuration = PetEyeModuleConfiguration(kind: .trackingBlack)
 
         XCTAssertEqual(configuration.eyeStyles(for: .calm).left, .round)
         XCTAssertEqual(configuration.eyeStyles(for: .calm).right, .round)
-        XCTAssertFalse(configuration.followsMouse(for: .calm))
+        XCTAssertTrue(configuration.followsMouse(for: .calm))
         XCTAssertTrue(configuration.allowsBlinking)
+        XCTAssertTrue(configuration.usesFixedBlackColor)
+        XCTAssertTrue(configuration.usesSingleColorEyeControls)
+    }
+
+    func testSelectableEyeColorsOnlyAppearForSupportedOfficialEyeTypes() {
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .tracking).supportsEyeColorSelection)
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .happy).supportsEyeColorSelection)
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .scared).supportsEyeColorSelection)
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .sleeping).supportsEyeColorSelection)
+        XCTAssertFalse(PetEyeModuleConfiguration(kind: .catDefault).supportsEyeColorSelection)
+        XCTAssertFalse(PetEyeModuleConfiguration(kind: .cookieBlackBean).supportsEyeColorSelection)
+    }
+
+    func testSelectableEyeColorsResolveLegacyAutomaticUsingRenderedDefault() {
+        var configuration = PetEyeModuleConfiguration(kind: .happy)
+        XCTAssertEqual(configuration.resolvedColorMode, .automatic)
+        XCTAssertEqual(configuration.colorSelectionMode(automaticColor: .black), .black)
+        XCTAssertEqual(configuration.colorSelectionMode(automaticColor: .white), .white)
+
+        configuration.colorMode = .white
+        XCTAssertEqual(configuration.colorSelectionMode(automaticColor: .black), .white)
+        configuration.colorMode = .brown
+        XCTAssertEqual(configuration.colorSelectionMode(automaticColor: .white), .brown)
+    }
+
+    func testHappyScaredAndSleepingEyesUseSingleColorDetailControls() {
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .happy).usesSingleColorEyeControls)
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .scared).usesSingleColorEyeControls)
+        XCTAssertTrue(PetEyeModuleConfiguration(kind: .sleeping).usesSingleColorEyeControls)
+    }
+
+    func testBrownEyeColorRoundTrips() throws {
+        var configuration = PetEyeModuleConfiguration(kind: .sleeping)
+        configuration.colorMode = .brown
+
+        let decoded = try JSONDecoder().decode(
+            PetEyeModuleConfiguration.self,
+            from: JSONEncoder().encode(configuration)
+        )
+
+        XCTAssertEqual(decoded.resolvedColorMode, .brown)
     }
 
     func testSkinOffsetSupportsLegacyDataAndRoundTrip() throws {

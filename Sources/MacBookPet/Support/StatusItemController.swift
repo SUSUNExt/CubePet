@@ -8,6 +8,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private static let petContextMenuWidth: CGFloat = 180
     private static let fixedMenuRowHeight: CGFloat = 22
     private static let meterMenuRowHeight: CGFloat = 34
+    private static let fixedMenuAppearance = NSAppearance(named: .aqua)
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let progressItem = NSMenuItem()
@@ -24,6 +25,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     )
     private let metricsBottomSeparator = NSMenuItem.separator()
     private let activityMonitorItem = NSMenuItem(title: "", action: #selector(openActivityMonitor), keyEquivalent: "")
+    private let petMenuWindowItem = NSMenuItem(title: "宠物菜单", action: #selector(openPetMenu), keyEquivalent: "")
     private let skinItem = NSMenuItem()
     private let shopItem = NSMenuItem()
     private let shopFoodItem = NSMenuItem()
@@ -49,7 +51,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         action: #selector(showPermissionSettings),
         keyEquivalent: ""
     )
-    private let menuAppearanceItem = NSMenuItem()
     private let menuFontItem = NSMenuItem()
     private let launchAtLoginItem = NSMenuItem(
         title: "",
@@ -68,7 +69,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let progressStore: PetProgressStore
     private let hungerStore: PetHungerStore
     private let appearanceSettings: PetAppearanceSettings
-    private let menuStyleSettings: MenuStyleSettings
     private let menuFontSettings: MenuFontSettings
     private let customizationStore: PetCustomizationStore
     private let featureEntitlementStore: FeatureEntitlementStore
@@ -77,13 +77,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let updateAvailability: AppUpdateAvailability
     private let metricsMonitor = SystemMetricsMonitor()
     private let onShowAbout: () -> Void
+    private let onShowPetMenu: () -> Void
     private let onShowPetCustomization: () -> Void
     private let onShowShortcutSettings: () -> Void
     private let onShowPermissionSettings: () -> Void
     private let onQuit: () -> Void
     private var showsSystemInfo: Bool
     private var languageMenuItems: [AppLanguage: NSMenuItem] = [:]
-    private var menuAppearanceMenuItems: [MenuStyle: NSMenuItem] = [:]
     private var menuFontMenuItems: [MenuFont: NSMenuItem] = [:]
     private var petMenuItems: [String: NSMenuItem] = [:]
     private var skinMenuItems: [String: NSMenuItem] = [:]
@@ -103,7 +103,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         progressStore: PetProgressStore,
         hungerStore: PetHungerStore,
         appearanceSettings: PetAppearanceSettings,
-        menuStyleSettings: MenuStyleSettings,
         menuFontSettings: MenuFontSettings,
         customizationStore: PetCustomizationStore,
         featureEntitlementStore: FeatureEntitlementStore,
@@ -111,6 +110,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         launchAtLoginController: LaunchAtLoginController,
         updateAvailability: AppUpdateAvailability,
         onShowAbout: @escaping () -> Void,
+        onShowPetMenu: @escaping () -> Void,
         onShowPetCustomization: @escaping () -> Void,
         onShowShortcutSettings: @escaping () -> Void,
         onShowPermissionSettings: @escaping () -> Void,
@@ -122,7 +122,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.progressStore = progressStore
         self.hungerStore = hungerStore
         self.appearanceSettings = appearanceSettings
-        self.menuStyleSettings = menuStyleSettings
         self.menuFontSettings = menuFontSettings
         self.customizationStore = customizationStore
         self.featureEntitlementStore = featureEntitlementStore
@@ -130,6 +129,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.launchAtLoginController = launchAtLoginController
         self.updateAvailability = updateAvailability
         self.onShowAbout = onShowAbout
+        self.onShowPetMenu = onShowPetMenu
         self.onShowPetCustomization = onShowPetCustomization
         self.onShowShortcutSettings = onShowShortcutSettings
         self.onShowPermissionSettings = onShowPermissionSettings
@@ -225,8 +225,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(metricsBottomSeparator)
 
+        petMenuWindowItem.target = self
+        menu.addItem(petMenuWindowItem)
+
+        // Keep the food submenu available to the pet action panel without
+        // exposing the old standalone shop in the status menu.
         shopItem.submenu = makeShopMenu()
-        menu.addItem(shopItem)
 
         skinItem.submenu = makeSkinMenu()
         menu.addItem(skinItem)
@@ -263,6 +267,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func configureRootMenuImages() {
         shopItem.image = NSImage(systemSymbolName: "bag", accessibilityDescription: nil)
+        petMenuWindowItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil)
         skinItem.image = NSImage(systemSymbolName: "tshirt", accessibilityDescription: nil)
         petItem.image = NSImage(systemSymbolName: "pawprint", accessibilityDescription: nil)
         settingItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
@@ -365,7 +370,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func applyMenuAppearance(to menu: NSMenu) {
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         for item in menu.items {
             if let submenu = item.submenu {
                 applyMenuAppearance(to: submenu)
@@ -421,17 +426,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         onShowPermissionSettings()
     }
 
-    @objc private func selectMenuStyle(_ sender: NSMenuItem) {
-        guard
-            let rawValue = sender.representedObject as? String,
-            let style = MenuStyle(rawValue: rawValue)
-        else { return }
-
-        menuStyleSettings.select(style)
-        applyMenuStyle()
-        updateMenuAppearanceMenuState()
-    }
-
     @objc private func selectMenuFont(_ sender: NSMenuItem) {
         guard
             let rawValue = sender.representedObject as? String,
@@ -474,6 +468,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         onShowPetCustomization()
+    }
+
+    @objc private func openPetMenu() {
+        onShowPetMenu()
     }
 
     @objc private func toggleSystemInfo() {
@@ -693,7 +691,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(shopPetsItem)
 
         updateShopMenuState()
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -703,7 +701,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         shopSkinMenuItems.removeAll()
 
         guard !appearanceSettings.isCustomPetSelected else {
-            menu.appearance = menuStyleSettings.style.menuAppearance
+            menu.appearance = Self.fixedMenuAppearance
             return menu
         }
 
@@ -717,7 +715,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         updateShopMenuState()
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -727,7 +725,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         skinMenuItems.removeAll()
 
         guard !appearanceSettings.isCustomPetSelected else {
-            menu.appearance = menuStyleSettings.style.menuAppearance
+            menu.appearance = Self.fixedMenuAppearance
             return menu
         }
 
@@ -741,7 +739,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         updateSkinMenuState()
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -774,20 +772,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(languageItem)
 
         menu.addItem(.separator())
-        let appearanceMenu = NSMenu()
-        appearanceMenu.autoenablesItems = false
-        menuAppearanceMenuItems.removeAll()
-        for style in MenuStyle.selectableCases {
-            let item = NSMenuItem(title: "", action: #selector(selectMenuStyle(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = style.rawValue
-            appearanceMenu.addItem(item)
-            menuAppearanceMenuItems[style] = item
-        }
-        menuAppearanceItem.image = NSImage(systemSymbolName: "circle.lefthalf.filled", accessibilityDescription: nil)
-        menuAppearanceItem.submenu = appearanceMenu
-        menu.addItem(menuAppearanceItem)
-
         let fontMenu = NSMenu()
         fontMenu.autoenablesItems = false
         menuFontMenuItems.removeAll()
@@ -822,7 +806,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateLanguageMenuState()
         updateSystemInfoVisibility()
 
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -876,7 +860,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         summonMenuItem.image = NSImage(systemSymbolName: "menubar.rectangle", accessibilityDescription: nil)
         menu.addItem(summonMenuItem)
 
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -894,7 +878,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             menu.addItem(item)
         }
 
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -967,7 +951,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         systemInfoItem.state = showsSystemInfo ? .on : .off
         menu.addItem(systemInfoItem)
 
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -999,7 +983,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         updatePetMenuState()
-        menu.appearance = menuStyleSettings.style.menuAppearance
+        menu.appearance = Self.fixedMenuAppearance
         return menu
     }
 
@@ -1017,6 +1001,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateLocalizedText() {
+        petMenuWindowItem.title = "宠物菜单"
         activityMonitorItem.title = languageSettings.text(.activityMonitor)
         skinItem.title = languageSettings.text(.changeSkin)
         shopItem.title = languageSettings.text(.shop)
@@ -1031,10 +1016,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateAvailableItem.attributedTitle = updateAvailableTitle()
         updateUpdateAvailableMenuState()
         quitItem.title = languageSettings.text(.exit)
-        menuAppearanceItem.title = languageSettings.text(.menuAppearance)
-        for style in MenuStyle.selectableCases {
-            menuAppearanceMenuItems[style]?.title = menuStyleTitle(style)
-        }
         menuFontItem.title = languageSettings.text(.menuFont)
         for font in MenuFont.selectableCases {
             menuFontMenuItems[font]?.title = menuFontTitle(font)
@@ -1053,7 +1034,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateSkinMenuState()
         updateShopMenuState()
         updateLanguageMenuState()
-        updateMenuAppearanceMenuState()
         updateMenuFontMenuState()
         updateSystemInfoVisibility()
         applyMenuFont(to: rootMenu)
@@ -1095,12 +1075,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
-    private func updateMenuAppearanceMenuState() {
-        for style in MenuStyle.selectableCases {
-            menuAppearanceMenuItems[style]?.state = menuStyleSettings.style == style ? .on : .off
-        }
-    }
-
     private func updateMenuFontMenuState() {
         for font in MenuFont.selectableCases {
             menuFontMenuItems[font]?.state = menuFontSettings.font == font ? .on : .off
@@ -1115,19 +1089,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             languageSettings.text(.menuFontHannotate)
         case .yuppy:
             languageSettings.text(.menuFontYuppy)
-        }
-    }
-
-    private func menuStyleTitle(_ style: MenuStyle) -> String {
-        switch style {
-        case .default:
-            languageSettings.text(.menuStyleDefault)
-        case .liquidGlass:
-            languageSettings.text(.menuStyleLiquidGlass)
-        case .dark:
-            languageSettings.text(.menuStyleDark)
-        case .light:
-            languageSettings.text(.menuStyleLight)
         }
     }
 
@@ -1316,14 +1277,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateStatusImage() {
-        if let customPet = customizationStore.customPet(id: appearanceSettings.selectedPetID) {
-            statusItem.button?.image = customPetStatusImage(customPet)
-        } else {
-            statusItem.button?.image = Self.makeStatusImage(
-                pet: appearanceSettings.selectedPet,
-                skin: appearanceSettings.selectedSkin
-            )
-        }
+        statusItem.button?.image = CubePetBrandIcon.statusImage()
     }
 
     private func customPetStatusImage(_ pet: CustomPetDefinition) -> NSImage? {
@@ -1360,8 +1314,32 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         case .cube:
             let bodyRect = NSRect(x: 2.5, y: 2.5, width: 13, height: 13)
             let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 3, yRadius: 3)
-            skin.color.setFill()
-            bodyPath.fill()
+            let cubeStyle = CubeSkinStyle(skinID: skin.id)
+            switch cubeStyle {
+            case .solid:
+                skin.color.setFill()
+                bodyPath.fill()
+            case .ice:
+                NSGradient(
+                    starting: NSColor(srgbRed: 0.76, green: 0.95, blue: 1, alpha: 1),
+                    ending: NSColor(srgbRed: 0.24, green: 0.63, blue: 0.90, alpha: 1)
+                )?.draw(in: bodyPath, angle: -45)
+                NSColor.white.withAlphaComponent(0.72).setStroke()
+                bodyPath.lineWidth = 0.8
+                bodyPath.stroke()
+            case .rainbow:
+                NSGradient(colors: [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple])?.draw(in: bodyPath, angle: -45)
+            case .ice2:
+                NSGradient(
+                    starting: NSColor(srgbRed: 0.90, green: 0.99, blue: 1, alpha: 1),
+                    ending: NSColor(srgbRed: 0.31, green: 0.66, blue: 0.80, alpha: 1)
+                )?.draw(in: bodyPath, angle: -45)
+                NSColor.white.withAlphaComponent(0.8).setStroke()
+                bodyPath.lineWidth = 0.8
+                bodyPath.stroke()
+            case .rainbow2:
+                NSGradient(colors: [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple])?.draw(in: bodyPath, angle: 0)
+            }
 
             NSColor.white.setFill()
             NSBezierPath(roundedRect: NSRect(x: 6, y: 8, width: 2.5, height: 4), xRadius: 1.2, yRadius: 1.2).fill()
@@ -1401,17 +1379,28 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 NSBezierPath(ovalIn: NSRect(x: 6.9, y: 11.9, width: 0.95, height: 0.95)).fill()
                 NSBezierPath(ovalIn: NSRect(x: 9.9, y: 11.9, width: 0.95, height: 0.95)).fill()
             }
-        case .shiba:
+        case .dog:
             NSGraphicsContext.current?.imageInterpolation = .high
-            ShibaPetAsset.normalImage?.draw(
-                in: NSRect(x: 0, y: 0, width: 18, height: 18),
-                from: .zero,
-                operation: .sourceOver,
-                fraction: 1
-            )
-            NSColor.black.setFill()
-            NSBezierPath(ovalIn: NSRect(x: 6.1, y: 11, width: 1.4, height: 1.4)).fill()
-            NSBezierPath(ovalIn: NSRect(x: 10.5, y: 11, width: 1.4, height: 1.4)).fill()
+            let resourceName = skin.id == "dog.shiba" ? "ShibaPet" : "BeaglePetNormal"
+            if let url = Bundle.main.url(forResource: resourceName, withExtension: "png"),
+               let image = NSImage(contentsOf: url) {
+                image.draw(
+                    in: NSRect(x: 0, y: 0, width: 18, height: 18),
+                    from: .zero,
+                    operation: .sourceOver,
+                    fraction: 1
+                )
+            }
+        case .cookie:
+            let cookieRect = NSRect(x: 1.8, y: 1.8, width: 14.4, height: 14.4)
+            skin.color.setFill()
+            NSBezierPath(ovalIn: cookieRect).fill()
+            NSColor(srgbRed: 0.38, green: 0.18, blue: 0.08, alpha: 1).setFill()
+            for point in [NSPoint(x: 5.1, y: 12.8), NSPoint(x: 13.1, y: 11.4), NSPoint(x: 11.9, y: 5.1)] {
+                NSBezierPath(ovalIn: NSRect(x: point.x, y: point.y, width: 2.1, height: 2.1)).fill()
+            }
+            NSBezierPath(ovalIn: NSRect(x: 6.3, y: 8.5, width: 1.3, height: 1.5)).fill()
+            NSBezierPath(ovalIn: NSRect(x: 10.4, y: 8.5, width: 1.3, height: 1.5)).fill()
         }
 
         image.unlockFocus()

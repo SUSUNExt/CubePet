@@ -9,6 +9,7 @@ struct PetView: View {
     @ObservedObject var state: PetState
     @ObservedObject var motionState: PetMotionState
     @ObservedObject var hungerStore: PetHungerStore
+    @ObservedObject var inventoryStore: PetInventoryStore
     @ObservedObject var appearanceSettings: PetAppearanceSettings
     @ObservedObject var customizationStore: PetCustomizationStore
     @ObservedObject var languageSettings: LanguageSettings
@@ -186,9 +187,10 @@ struct PetView: View {
                 )
             } else {
                 switch appearanceSettings.selectedPet.visualKind {
-            case .cube:
+            case .cube, .cookie:
                 CubePetView(
                     color: Color(nsColor: appearanceSettings.selectedSkin.color),
+                    skinStyle: CubeSkinStyle(skinID: appearanceSettings.selectedSkinID),
                     expression: visualRenderingExpression,
                     isBlinking: state.isBlinking,
                     gazeOffset: motionState.gazeOffset,
@@ -218,16 +220,46 @@ struct PetView: View {
                     customEyeAsset: customEyeAsset,
                     appliesVerticalBaseOffsetInView: appliesVerticalBaseOffsetInView
                 )
-            case .shiba:
-                ShibaPetView(
-                    expression: visualRenderingExpression,
-                    isBlinking: state.isBlinking,
-                    gazeOffset: motionState.gazeOffset,
-                    mouthOpen: mouthOpen,
-                    visualConfiguration: configuration,
-                    customEyeAsset: customEyeAsset,
-                    appliesVerticalBaseOffsetInView: appliesVerticalBaseOffsetInView
-                )
+            case .dog:
+                Image(systemName: "dog.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.brown)
+                    .padding(12)
+                }
+            }
+
+            if Self.decorationsAreVisible(
+                petID: appearanceSettings.selectedPetID,
+                skinID: appearanceSettings.selectedSkinID,
+                expression: expression
+            ) {
+                ForEach(
+                    inventoryStore.equippedDecorations(
+                        for: appearanceSettings.selectedPetID,
+                        skinID: appearanceSettings.selectedSkinID
+                    )
+                ) { decoration in
+                    if let item = ShopCatalog.petMenuItem(id: decoration.itemID) {
+                        PetDecorationArtworkView(item: item)
+                            .frame(
+                                width: PetDecorationRenderingMetrics.sideLength(
+                                    decorationScale: decoration.scale
+                                ),
+                                height: PetDecorationRenderingMetrics.sideLength(
+                                    decorationScale: decoration.scale
+                                )
+                            )
+                            .position(
+                                decoration.position.point(
+                                    in: CGSize(
+                                        width: PetMetrics.bodyContentSize,
+                                        height: PetMetrics.bodyContentSize
+                                    )
+                                )
+                            )
+                            .allowsHitTesting(false)
+                    }
                 }
             }
         }
@@ -253,33 +285,17 @@ struct PetView: View {
     }
 
     private var activeVisualConfiguration: PetVisualConfiguration {
-        if let customPet = customizationStore.customPet(id: appearanceSettings.selectedPetID) {
-            return customPet.visualConfiguration
-        }
-
-        let official = PetVisualDefaults.configuration(
+        customizationStore.resolvedVisualConfiguration(
             petID: appearanceSettings.selectedPetID,
             skinID: appearanceSettings.selectedSkinID
-        )
-        return customizationStore.visualConfiguration(
-            petID: appearanceSettings.selectedPetID,
-            skinID: appearanceSettings.selectedSkinID,
-            official: official
         )
     }
 
     private func bundledVisualAsset(
         for source: PetBaseVisualSource
     ) -> PetImportedVisualAsset? {
-        guard case let .bundledAsset(name) = source,
-              let url = Bundle.main.url(forResource: name, withExtension: "png")
-        else { return nil }
-
-        return PetImportedVisualAsset(
-            kind: .stillImage,
-            imageURL: url,
-            frameURLs: []
-        )
+        guard case let .bundledAsset(name) = source else { return nil }
+        return PetBundledVisualAssetCache.visualAsset(named: name)
     }
 
     private var visualExpression: PetExpression {
@@ -348,6 +364,18 @@ struct PetView: View {
         return .hungry
     }
 
+    static func decorationsAreVisible(
+        petID: String,
+        skinID: String,
+        expression: PetExpression
+    ) -> Bool {
+        guard expression == .sleeping else { return true }
+
+        return petID == PetCatalog.cube.id
+            || petID == PetCatalog.frog.id
+            || (petID == PetCatalog.cat.id && skinID == "cat.yellow")
+    }
+
     private var groundAlignmentOffset: CGFloat {
         if appearanceSettings.isCustomPetSelected {
             return 5
@@ -356,6 +384,8 @@ struct PetView: View {
         switch appearanceSettings.selectedPet.visualKind {
         case .cube:
             return 5
+        case .cookie:
+            return 9
         case .frog:
             return 17.8
         case .cat:
@@ -365,7 +395,7 @@ struct PetView: View {
             case "cat.yellow": 12.6
             default: 10.8
             }
-        case .shiba:
+        case .dog:
             return 10.8
         }
     }

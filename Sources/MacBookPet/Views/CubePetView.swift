@@ -1,7 +1,21 @@
 import SwiftUI
 
+enum CubeSkinAsset {
+    static func resourceName(for style: CubeSkinStyle) -> String? {
+        switch style {
+        case .ice2:
+            "CubeSkinIce2"
+        case .rainbow2:
+            "CubeSkinRainbow2"
+        case .solid, .ice, .rainbow:
+            nil
+        }
+    }
+}
+
 struct CubePetView: View {
     let color: Color
+    let skinStyle: CubeSkinStyle
     let expression: PetExpression
     let isBlinking: Bool
     let gazeOffset: CGSize
@@ -9,6 +23,7 @@ struct CubePetView: View {
     let visualConfiguration: PetVisualConfiguration
     var customEyeAsset: PetImportedVisualAsset? = nil
     var appliesVerticalBaseOffsetInView = true
+    var imagePurpose: PetImagePurpose = .fullResolution
 
     var body: some View {
         ZStack {
@@ -25,7 +40,8 @@ struct CubePetView: View {
                         width: 0,
                         height: isEating ? -9 - mouthOpen * 13 : expression.verticalOffset
                     ),
-                    customEyeAsset: customEyeAsset
+                    customEyeAsset: customEyeAsset,
+                    imagePurpose: imagePurpose
                 )
                 .animation(.spring(response: 0.18, dampingFraction: 0.72), value: mouthOpen)
             }
@@ -69,20 +85,83 @@ struct CubePetView: View {
             let gap = 3 + mouthOpen * 17
 
             ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: PetMetrics.cornerRadius, style: .continuous)
-                    .fill(color)
-                    .frame(width: bodySize, height: lowerHeight)
+                cubeSegment(width: bodySize, height: lowerHeight)
 
-                RoundedRectangle(cornerRadius: PetMetrics.cornerRadius, style: .continuous)
-                    .fill(color)
-                    .frame(width: bodySize, height: upperHeight)
+                cubeSegment(width: bodySize, height: upperHeight)
                     .offset(y: -(lowerHeight + gap))
             }
             .frame(width: bodySize, height: bodySize, alignment: .bottom)
             .animation(.spring(response: 0.18, dampingFraction: 0.72), value: mouthOpen)
         } else {
-            RoundedRectangle(cornerRadius: PetMetrics.cornerRadius, style: .continuous)
-                .fill(color)
+            cubeSegment(width: nil, height: nil)
+        }
+    }
+
+    @ViewBuilder
+    private func cubeSegment(width: CGFloat?, height: CGFloat?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: PetMetrics.cornerRadius, style: .continuous)
+
+        shape
+            .fill(bodyFill)
+            .frame(width: width, height: height)
+            .overlay {
+                if let resourceName = CubeSkinAsset.resourceName(for: skinStyle) {
+                    PetAssetImageView(
+                        url: PetResourceURLCache.url(
+                            named: resourceName,
+                            withExtension: "png"
+                        ),
+                        purpose: imagePurpose,
+                        contentMode: .fill
+                    )
+                        // The generated asset has transparent display padding.
+                        // This scale aligns its painted cube with the live body shape.
+                        .scaleEffect(1.39)
+                        .clipShape(shape)
+                }
+
+                if skinStyle == .ice {
+                    shape
+                        .stroke(.white.opacity(0.78), lineWidth: 1.5)
+                        .overlay(alignment: .topLeading) {
+                            LinearGradient(
+                                colors: [.white.opacity(0.75), .white.opacity(0.12), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            .clipShape(shape)
+                        }
+                }
+            }
+    }
+
+    private var bodyFill: AnyShapeStyle {
+        switch skinStyle {
+        case .solid:
+            AnyShapeStyle(color)
+        case .ice:
+            AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.32, green: 0.78, blue: 0.96),
+                        Color(red: 0.76, green: 0.95, blue: 1),
+                        Color(red: 0.24, green: 0.63, blue: 0.90)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        case .rainbow:
+            AnyShapeStyle(
+                LinearGradient(
+                    colors: [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .red],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        case .ice2, .rainbow2:
+            // The matching bundled artwork is overlaid in cubeSegment.
+            AnyShapeStyle(color)
         }
     }
 }

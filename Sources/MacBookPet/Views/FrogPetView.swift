@@ -1,32 +1,39 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 enum FrogPetAsset {
-    static let image = load(named: "FrogPet")
-    static let largeMouthImage = load(named: "FrogPetMouthLarge")
+    static let imageName = "FrogPet"
+    static let largeMouthImageName = "FrogPetMouthLarge"
+
+    static var image: NSImage? { load(named: imageName) }
+    static var largeMouthImage: NSImage? { load(named: largeMouthImageName) }
 
     private static func load(named name: String) -> NSImage? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "png") else {
+        guard let url = PetResourceURLCache.url(named: name, withExtension: "png") else {
             return nil
         }
-        return NSImage(contentsOf: url)
+        return PetImportedImageCache.image(for: url)
     }
 }
 
 struct FrogPetImage: View {
-    let image: NSImage?
+    let resourceName: String
+    let imagePurpose: PetImagePurpose
 
-    init(image: NSImage? = FrogPetAsset.image) {
-        self.image = image
+    init(
+        resourceName: String = "FrogPet",
+        imagePurpose: PetImagePurpose = .fullResolution
+    ) {
+        self.resourceName = resourceName
+        self.imagePurpose = imagePurpose
     }
 
     var body: some View {
-        if let image {
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-        } else {
+        PetAssetImageView(
+            url: PetResourceURLCache.url(named: resourceName, withExtension: "png"),
+            purpose: imagePurpose
+        ) {
             Ellipse()
                 .fill(Color(red: 0.39, green: 0.48, blue: 0.16))
                 .padding(7)
@@ -42,16 +49,20 @@ struct FrogPetView: View {
     let visualConfiguration: PetVisualConfiguration
     var customEyeAsset: PetImportedVisualAsset? = nil
     var appliesVerticalBaseOffsetInView = true
+    var imagePurpose: PetImagePurpose = .fullResolution
 
     var body: some View {
         let isEating = mouthOpen > 0.02
 
         return ZStack {
             ZStack {
-                FrogPetImage()
+                FrogPetImage(imagePurpose: imagePurpose)
 
                 if isEating {
-                    FrogPetImage(image: FrogPetAsset.largeMouthImage)
+                    FrogPetImage(
+                        resourceName: FrogPetAsset.largeMouthImageName,
+                        imagePurpose: imagePurpose
+                    )
                         .mask(
                             Ellipse()
                                 .fill(
@@ -71,7 +82,11 @@ struct FrogPetView: View {
 
             if let eyeConfiguration {
                 if let customEyeAsset {
-                    CustomEyePairView(asset: customEyeAsset, configuration: eyeConfiguration)
+                    CustomEyePairView(
+                        asset: customEyeAsset,
+                        configuration: eyeConfiguration,
+                        imagePurpose: imagePurpose
+                    )
                 } else {
                     FrogEyePairView(
                         configuration: eyeConfiguration,
@@ -161,6 +176,8 @@ private struct FrogEyePairView: View {
             .black
         case .white:
             .white
+        case .brown:
+            Color(red: 112.0 / 255.0, green: 68.0 / 255.0, blue: 41.0 / 255.0)
         }
     }
 }
